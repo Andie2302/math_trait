@@ -8,6 +8,10 @@ pub struct Additive;
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Multiplicative;
 
+/// Etikett für die Skalarmultiplikation `Skalar × Vektor → Vektor`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct ScalarMultiplication;
+
 // --- Partielle Seite: die Verknüpfung gilt nicht für jedes Paar ---
 
 /// Menge mit Verknüpfung, die nicht für alle Paare definiert sein muss.
@@ -182,5 +186,101 @@ pub trait DivisionRing<Add = Additive, Mul = Multiplicative>: Ring<Add, Mul> {}
 /// Körper: kommutativer Schiefkörper.
 pub trait Field<Add = Additive, Mul = Multiplicative>:
     DivisionRing<Add, Mul> + CommutativeRing<Add, Mul>
+{
+}
+
+// --- Dritte Verknüpfung: Skalare wirken auf Elemente ---
+
+/// Die Menge `S` wirkt von links auf `Self`: `S × Self → Self`.
+///
+/// Anders als bei `Magma` stehen links und rechts verschiedene Typen.
+pub trait LeftAction<S, Act = ScalarMultiplication> {}
+
+/// Modul über dem Ring `R`: `Self` ist eine abelsche Gruppe, `R` wirkt von links, und es gilt
+/// `a(x + y) = ax + ay`, `(a + b)x = ax + bx`, `(ab)x = a(bx)` und `1x = x`.
+///
+/// `Add` und `Mul` benennen die Verknüpfungen von `Self` bzw. `R` (je Typ ein eigenes Etikett-Paar).
+pub trait Module<R, Add = Additive, Mul = Multiplicative, Act = ScalarMultiplication>:
+    AbelianGroup<Add> + LeftAction<R, Act>
+where
+    R: Ring<Add, Mul>,
+{
+}
+
+/// Vektorraum: Modul über einem Körper. Gilt automatisch für jedes solche Modul.
+pub trait VectorSpace<K, Add = Additive, Mul = Multiplicative, Act = ScalarMultiplication>:
+    Module<K, Add, Mul, Act>
+where
+    K: Field<Add, Mul>,
+{
+}
+
+impl<V, K, Add, Mul, Act> VectorSpace<K, Add, Mul, Act> for V
+where
+    K: Field<Add, Mul>,
+    V: Module<K, Add, Mul, Act>,
+{
+}
+
+/// Algebra über dem kommutativen Ring `R`: ein Modul mit einer weiteren Verknüpfung `Prod`
+/// (`Self × Self → Self`), die über `Add` distribuiert und mit den Skalaren verträglich ist:
+/// `(ax)y = a(xy) = x(ay)`. Assoziativität wird *nicht* verlangt.
+pub trait Algebra<
+    R,
+    Add = Additive,
+    Mul = Multiplicative,
+    Act = ScalarMultiplication,
+    Prod = Multiplicative,
+>: Module<R, Add, Mul, Act> + Distributive<Prod, Add> where
+    R: CommutativeRing<Add, Mul>,
+{
+}
+
+/// Algebra mit Einselement bezüglich `Prod`.
+pub trait UnitalAlgebra<
+    R,
+    Add = Additive,
+    Mul = Multiplicative,
+    Act = ScalarMultiplication,
+    Prod = Multiplicative,
+>: Algebra<R, Add, Mul, Act, Prod> + UnitalMagma<Prod> where
+    R: CommutativeRing<Add, Mul>,
+{
+}
+
+/// Algebra mit assoziativem Produkt.
+pub trait AssociativeAlgebra<
+    R,
+    Add = Additive,
+    Mul = Multiplicative,
+    Act = ScalarMultiplication,
+    Prod = Multiplicative,
+>: Algebra<R, Add, Mul, Act, Prod> + Semigroup<Prod> where
+    R: CommutativeRing<Add, Mul>,
+{
+}
+
+/// Algebra mit alternativem Produkt (z. B. die Oktonionen).
+pub trait AlternativeAlgebra<
+    R,
+    Add = Additive,
+    Mul = Multiplicative,
+    Act = ScalarMultiplication,
+    Prod = Multiplicative,
+>: Algebra<R, Add, Mul, Act, Prod> + Alternative<Prod> where
+    R: CommutativeRing<Add, Mul>,
+{
+}
+
+/// Divisionsalgebra: Algebra mit Einselement, in der jedes Element außer dem Nullvektor
+/// bezüglich `Prod` teilbar ist (z. B. ℝ, ℂ, ℍ, 𝕆).
+pub trait DivisionAlgebra<
+    R,
+    Add = Additive,
+    Mul = Multiplicative,
+    Act = ScalarMultiplication,
+    Prod = Multiplicative,
+>: UnitalAlgebra<R, Add, Mul, Act, Prod> where
+    R: CommutativeRing<Add, Mul>,
 {
 }
