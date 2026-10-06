@@ -4,11 +4,11 @@ use core::fmt;
 use core::marker::PhantomData;
 
 use crate::{
-    Additive, AlgebraWithInvolution, Alternative, AlternativeAlgebra, AntiAutomorphism,
-    AssociativeAlgebra, Automorphism, Commutative, CommutativeRing, CompositionAlgebra,
-    Conjugation, Field, Flexible, Group, Involutive, LeftAction, Magma, Multiplicative, Norm,
-    PowerAssociative, QuadraticForm, Semigroup, Semigroupoid, TrivialInvolution, UnitalAlgebra,
-    UnitalMagma, impl_abelian_group, impl_algebra, impl_module, impl_unital_algebra,
+    Additive, AlgebraWithInvolution, Alternative, AlternativeAlgebra, AssociativeAlgebra,
+    Commutative, CommutativeRing, CompositionAlgebra, Conjugation, Field, Flexible, Group,
+    Involutive, LeftAction, Magma, Multiplicative, Norm, PowerAssociative, QuadraticForm,
+    Semigroup, Semigroupoid, TrivialInvolution, UnitalAlgebra, UnitalMagma, impl_abelian_group,
+    impl_algebra, impl_algebra_with_involution, impl_module, impl_unital_algebra,
     impl_unital_magma,
 };
 
@@ -186,38 +186,11 @@ impl_unital_algebra!(
 
 // --- Die Involution: (a, b)* = (a*, −b) -------------------------------------------------------
 
-impl<A, R, G> Involutive for CayleyDickson<A, R, G>
-where
-    A: UnitalAlgebra<R> + AlgebraWithInvolution<R>,
-    R: CommutativeRing,
-    G: Gamma<R>,
-{
-    fn conjugate(&self) -> Self {
-        Self::new(conj(&self.first), neg(&self.second))
-    }
-}
-
-impl<A, R, G> Automorphism<Additive> for CayleyDickson<A, R, G>
-where
-    A: UnitalAlgebra<R> + AlgebraWithInvolution<R>,
-    R: CommutativeRing,
-    G: Gamma<R>,
-{
-}
-impl<A, R, G> AntiAutomorphism<Multiplicative> for CayleyDickson<A, R, G>
-where
-    A: UnitalAlgebra<R> + AlgebraWithInvolution<R>,
-    R: CommutativeRing,
-    G: Gamma<R>,
-{
-}
-impl<A, R, G> AlgebraWithInvolution<R> for CayleyDickson<A, R, G>
-where
-    A: UnitalAlgebra<R> + AlgebraWithInvolution<R>,
-    R: CommutativeRing,
-    G: Gamma<R>,
-{
-}
+impl_algebra_with_involution!(
+    for [A: UnitalAlgebra<R> + AlgebraWithInvolution<R>, R: CommutativeRing, G: Gamma<R>]
+    CayleyDickson<A, R, G>, R, Multiplicative;
+    conjugate(x) { CayleyDickson::new(conj(&x.first), neg(&x.second)) }
+);
 
 // --- Die Norm: N(a, b) = N(a) − γ·N(b) -----------------------------------------------------------
 

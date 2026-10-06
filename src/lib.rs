@@ -50,9 +50,11 @@
 //! ## Implementieren mit Makros
 //!
 //! Eine Gruppe verlangt 15 Impls, eine Lie-Algebra weit mehr. Die Makros `impl_magma!`,
-//! `impl_unital_magma!`, `impl_semigroup!`, `impl_monoid!`, `impl_group!`, `impl_abelian_group!`,
-//! `impl_ring!`, `impl_field!`, `impl_module!`, `impl_algebra!` (mit Zusätzen wie
-//! `impl_unital_algebra!`; für Ringe `impl_ring_algebra!`) und `impl_lie_algebra!` erzeugen sie aus kurzen Rümpfen. Alle nehmen
+//! `impl_unital_magma!`, `impl_quasigroup!`, `impl_loop!`, `impl_semigroup!`, `impl_monoid!`,
+//! `impl_group!`, `impl_abelian_group!`, `impl_semiring!`, `impl_ring!`, `impl_field!`,
+//! `impl_star_ring!`, `impl_module!`, `impl_algebra!` (mit Zusätzen wie
+//! `impl_unital_algebra!`; für Ringe `impl_ring_algebra!`), `impl_algebra_with_involution!`,
+//! `impl_composition_algebra!` und `impl_lie_algebra!` erzeugen sie aus kurzen Rümpfen. Alle nehmen
 //! optional Typparameter mit Bedingungen (`for [A: Bound] Typ<A>`), siehe das Modul `macros`
 //! im Quelltext. Die Gesetze prüfen die Makros nicht: Wer eins benutzt, behauptet sie.
 

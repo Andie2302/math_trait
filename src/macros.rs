@@ -156,6 +156,78 @@ macro_rules! impl_unital_magma {
     };
 }
 
+/// Quasigruppe: Verknüpfung `op` mit Teilbarkeit. `ldiv(a, b)` löst `a ∘ x = b`,
+/// `rdiv(a, b)` löst `y ∘ a = b`.
+///
+/// ```
+/// use math_trait::{impl_quasigroup, Magma, Quasigroup};
+/// struct Label;
+/// struct Z5(u8);
+/// // a ∘ b = 2a + 4b (mod 5): eindeutig lösbar, aber nicht assoziativ
+/// impl_quasigroup!(Z5, Label;
+///     op(a, b) { Z5((2 * a.0 + 4 * b.0) % 5) }
+///     ldiv(a, b) { Z5((4 * (b.0 + 5 - (2 * a.0) % 5)) % 5) }
+///     rdiv(a, b) { Z5((3 * (b.0 + 5 - (4 * a.0) % 5)) % 5) }
+/// );
+/// let (a, b) = (Z5(1), Z5(3));
+/// let x = <Z5 as Quasigroup<Label>>::ldiv(&a, &b);
+/// assert_eq!(<Z5 as Magma<Label>>::op(&a, &x).0, b.0);
+/// ```
+#[macro_export]
+macro_rules! impl_quasigroup {
+    (for [$($g:tt)*] $t:ty, $op:ty; op($a:ident, $b:ident) $body:block
+        ldiv($la:ident, $lb:ident) $ldiv:block rdiv($ra:ident, $rb:ident) $rdiv:block) => {
+        $crate::__markers!([$($g)*] $t, $op:
+            PartialMagma, LeftCancellative, RightCancellative, Cancellative);
+        $crate::__impl_op!([$($g)*] $t, $op, $a, $b, $body);
+        $crate::__impl_quasigroup_methods!([$($g)*] $t, $op, $la, $lb, $ldiv, $ra, $rb, $rdiv);
+    };
+    ($t:ty, $op:ty; op($a:ident, $b:ident) $body:block
+        ldiv($la:ident, $lb:ident) $ldiv:block rdiv($ra:ident, $rb:ident) $rdiv:block) => {
+        $crate::impl_quasigroup!(for [] $t, $op; op($a, $b) $body
+            ldiv($la, $lb) $ldiv rdiv($ra, $rb) $rdiv);
+    };
+}
+
+/// Loop: Quasigruppe mit neutralem Element `identity`, nicht notwendig assoziativ.
+#[macro_export]
+macro_rules! impl_loop {
+    (for [$($g:tt)*] $t:ty, $op:ty; op($a:ident, $b:ident) $body:block identity() $id:block
+        ldiv($la:ident, $lb:ident) $ldiv:block rdiv($ra:ident, $rb:ident) $rdiv:block) => {
+        $crate::__markers!([$($g)*] $t, $op:
+            PartialMagma, LeftCancellative, RightCancellative, Cancellative,
+            UnitalPartialMagma, Loop);
+        $crate::__impl_op!([$($g)*] $t, $op, $a, $b, $body);
+        $crate::__impl_identity!([$($g)*] $t, $op, $id);
+        $crate::__impl_quasigroup_methods!([$($g)*] $t, $op, $la, $lb, $ldiv, $ra, $rb, $rdiv);
+    };
+    ($t:ty, $op:ty; op($a:ident, $b:ident) $body:block identity() $id:block
+        ldiv($la:ident, $lb:ident) $ldiv:block rdiv($ra:ident, $rb:ident) $rdiv:block) => {
+        $crate::impl_loop!(for [] $t, $op; op($a, $b) $body identity() $id
+            ldiv($la, $lb) $ldiv rdiv($ra, $rb) $rdiv);
+    };
+}
+
+#[doc(hidden)]
+#[macro_export]
+macro_rules! __impl_quasigroup_methods {
+    ([$($g:tt)*] $t:ty, $op:ty, $la:ident, $lb:ident, $ldiv:block,
+        $ra:ident, $rb:ident, $rdiv:block) => {
+        impl<$($g)*> $crate::Quasigroup<$op> for $t {
+            fn ldiv(&self, b: &Self) -> Self {
+                let $la = self;
+                let $lb = b;
+                $ldiv
+            }
+            fn rdiv(&self, b: &Self) -> Self {
+                let $ra = self;
+                let $rb = b;
+                $rdiv
+            }
+        }
+    };
+}
+
 /// Halbgruppe: `op` ist assoziativ.
 #[macro_export]
 macro_rules! impl_semigroup {
@@ -680,5 +752,66 @@ macro_rules! impl_field_algebra {
             }
         }
         impl $crate::CompositionAlgebra<$k> for $k {}
+    };
+}
+
+/// *-Ring: ein Ring mit Involution `conjugate`, die die Addition erhält und die Multiplikation
+/// umkehrt. `T` muss schon ein Ring sein (z. B. über [`impl_ring!`]).
+#[macro_export]
+macro_rules! impl_star_ring {
+    (for [$($g:tt)*] $t:ty; conjugate($x:ident) $body:block) => {
+        impl<$($g)*> $crate::Involutive for $t {
+            fn conjugate(&self) -> Self {
+                let $x = self;
+                $body
+            }
+        }
+        impl<$($g)*> $crate::Automorphism<$crate::Additive> for $t {}
+        impl<$($g)*> $crate::AntiAutomorphism<$crate::Multiplicative> for $t {}
+        impl<$($g)*> $crate::StarRing for $t {}
+    };
+    ($t:ty; conjugate($x:ident) $body:block) => {
+        $crate::impl_star_ring!(for [] $t; conjugate($x) $body);
+    };
+}
+
+/// Algebra mit Involution `conjugate` über `R`, die die Addition erhält und `Prod` umkehrt.
+/// `T` muss schon eine Algebra sein (z. B. über [`impl_algebra!`]).
+#[macro_export]
+macro_rules! impl_algebra_with_involution {
+    (for [$($g:tt)*] $t:ty, $r:ty, $prod:ty; conjugate($x:ident) $body:block) => {
+        impl<$($g)*> $crate::Involutive for $t {
+            fn conjugate(&self) -> Self {
+                let $x = self;
+                $body
+            }
+        }
+        impl<$($g)*> $crate::Automorphism<$crate::Additive> for $t {}
+        impl<$($g)*> $crate::AntiAutomorphism<$prod> for $t {}
+        impl<$($g)*> $crate::AlgebraWithInvolution<
+            $r, $crate::Additive, $crate::Multiplicative, $crate::ScalarMultiplication, $prod
+        > for $t {}
+    };
+    ($t:ty, $r:ty, $prod:ty; conjugate($x:ident) $body:block) => {
+        $crate::impl_algebra_with_involution!(for [] $t, $r, $prod; conjugate($x) $body);
+    };
+}
+
+/// Kompositionsalgebra über dem Körper `K` mit der Norm-Form `norm`. `T` muss schon eine
+/// unitale Algebra mit Involution sein (über die Makros `impl_unital_algebra!` und
+/// `impl_algebra_with_involution!`), mit dem Produkt `Multiplicative`.
+#[macro_export]
+macro_rules! impl_composition_algebra {
+    (for [$($g:tt)*] $t:ty, $k:ty; norm($x:ident) $body:block) => {
+        impl<$($g)*> $crate::QuadraticForm<$k, $crate::Norm> for $t {
+            fn value(&self) -> $k {
+                let $x = self;
+                $body
+            }
+        }
+        impl<$($g)*> $crate::CompositionAlgebra<$k> for $t {}
+    };
+    ($t:ty, $k:ty; norm($x:ident) $body:block) => {
+        $crate::impl_composition_algebra!(for [] $t, $k; norm($x) $body);
     };
 }
