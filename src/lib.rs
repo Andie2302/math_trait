@@ -1,3 +1,54 @@
+//! # math_trait
+//!
+//! Ein Trait-System für Mathematik, **unabhängig von konkreten Basisdatentypen**.
+//! Dieses Crate enthält keinen einzigen `i32`, `f64` & Co.
+//!
+//! ## Ein Kern mit Methoden, alles andere sind Marker
+//!
+//! Nur wenige Traits haben Methoden, alle anderen sind leere Marker, deren Gesetz in der
+//! Doc-Zeile steht:
+//!
+//! | Trait | Methode |
+//! |---|---|
+//! | [`Magma`] | `op` |
+//! | [`UnitalMagma`] | `identity` |
+//! | [`Quasigroup`] | `ldiv`, `rdiv` |
+//! | [`Group`] | `inverse` |
+//! | [`LeftAction`] | `act` |
+//! | [`BilinearForm`] | `form` |
+//! | [`QuadraticForm`] | `value` |
+//! | [`Involutive`] | `conjugate` |
+//!
+//! ## Die Verknüpfung ist ein Typparameter
+//!
+//! `Magma<Op>` statt `Magma`: Ein Typ kann mehrere Rollen haben (`Magma<Additive>` *und*
+//! `Magma<Multiplicative>`). Das Etikett `Op` ist ein beliebiger Typ. Bei mehreren Rollen
+//! ruft man `<T as Magma<Additive>>::op(&a, &b)` auf.
+//!
+//! ## Hierarchie
+//!
+//! ```text
+//! PartialMagma ─ UnitalPartialMagma ─┐
+//!      │                             ├─ SmallCategory ─ Groupoid
+//!      └─ Semigroupoid ─────────────┘
+//!
+//! Magma ┬─ Quasigroup ─┐
+//!       │              ├─ Loop ──────────────┐
+//!       ├─ UnitalMagma ┘                     │
+//!       └─ Semigroup ─ Monoid ───────────────┴─ Group ─ AbelianGroup
+//!
+//! Ring ⊂ CommutativeRing ⊂ Field        (mit zwei Verknüpfungen: Add, Mul)
+//! Module ⊂ VectorSpace;  Algebra ⊂ UnitalAlgebra ⊂ DivisionAlgebra ⊂ CompositionAlgebra
+//! ```
+//!
+//! Zahlenartige Traits (`Number`, `Integer`, `Float`, …) stehen getrennt im Modul [`numeric`].
+
+#![no_std]
+#![forbid(unsafe_code)]
+#![warn(missing_docs)]
+
+pub mod numeric;
+
 // --- Etiketten für Verknüpfungen ---
 
 /// Etikett für die als „Addition“ geschriebene Verknüpfung.
@@ -40,13 +91,25 @@ pub trait Groupoid<Op>: SmallCategory<Op> {}
 // --- Totale Seite: die Verknüpfung gilt für alle Paare ---
 
 /// Menge mit abgeschlossener Verknüpfung.
-pub trait Magma<Op>: PartialMagma<Op> {}
+pub trait Magma<Op>: PartialMagma<Op> + Sized {
+    /// Verknüpft `self` mit `rhs`.
+    fn op(&self, rhs: &Self) -> Self;
+}
 
 /// Magma mit Teilbarkeit: `a ∘ x = b` und `y ∘ a = b` sind stets eindeutig lösbar.
-pub trait Quasigroup<Op>: Magma<Op> + Cancellative<Op> {}
+pub trait Quasigroup<Op>: Magma<Op> + Cancellative<Op> {
+    /// Löst `self ∘ x = b` nach `x`.
+    fn ldiv(&self, b: &Self) -> Self;
+
+    /// Löst `y ∘ self = b` nach `y`.
+    fn rdiv(&self, b: &Self) -> Self;
+}
 
 /// Magma mit neutralem Element.
-pub trait UnitalMagma<Op>: Magma<Op> + UnitalPartialMagma<Op> {}
+pub trait UnitalMagma<Op>: Magma<Op> + UnitalPartialMagma<Op> {
+    /// Das neutrale Element (`0` bzw. `1`).
+    fn identity() -> Self;
+}
 
 /// Quasigruppe mit neutralem Element. Nicht notwendig assoziativ.
 pub trait Loop<Op>: Quasigroup<Op> + UnitalMagma<Op> {}
@@ -64,7 +127,10 @@ pub trait AssociativeQuasigroup<Op>: Semigroup<Op> + Quasigroup<Op> {}
 pub trait Monoid<Op>: Semigroup<Op> + UnitalMagma<Op> + SmallCategory<Op> {}
 
 /// Monoid, in dem jedes Element ein Inverses hat. Zugleich ein assoziativer Loop.
-pub trait Group<Op>: Monoid<Op> + Loop<Op> + AssociativeQuasigroup<Op> + Groupoid<Op> {}
+pub trait Group<Op>: Monoid<Op> + Loop<Op> + AssociativeQuasigroup<Op> + Groupoid<Op> {
+    /// Das Inverse von `self` (`-a` bzw. `a⁻¹`).
+    fn inverse(&self) -> Self;
+}
 
 // --- Zusatzeigenschaften ---
 
@@ -74,11 +140,14 @@ pub trait Commutative<Op>: Magma<Op> + Flexible<Op> {}
 /// Magma, in dem jedes Element mit sich selbst verknüpft sich selbst ergibt: `a ∘ a = a`.
 pub trait Idempotent<Op>: Magma<Op> {}
 
+/// Halbgruppe mit kommutativer Verknüpfung. Solche Halbgruppen sind stets medial.
+pub trait CommutativeSemigroup<Op>: Semigroup<Op> + Commutative<Op> + Medial<Op> {}
+
 /// Monoid mit kommutativer Verknüpfung.
-pub trait CommutativeMonoid<Op>: Monoid<Op> + Commutative<Op> {}
+pub trait CommutativeMonoid<Op>: Monoid<Op> + CommutativeSemigroup<Op> {}
 
 /// Gruppe mit kommutativer Verknüpfung.
-pub trait AbelianGroup<Op>: Group<Op> + Commutative<Op> {}
+pub trait AbelianGroup<Op>: Group<Op> + CommutativeMonoid<Op> {}
 
 // --- Kürzbarkeit ---
 
@@ -202,7 +271,10 @@ pub trait Field<Add = Additive, Mul = Multiplicative>:
 /// Die Menge `S` wirkt von links auf `Self`: `S × Self → Self`.
 ///
 /// Anders als bei `Magma` stehen links und rechts verschiedene Typen.
-pub trait LeftAction<S, Act = ScalarMultiplication> {}
+pub trait LeftAction<S, Act = ScalarMultiplication>: Sized {
+    /// Lässt `scalar` auf `x` wirken.
+    fn act(scalar: &S, x: &Self) -> Self;
+}
 
 /// Modul über dem Ring `R`: `Self` ist eine abelsche Gruppe, `R` wirkt von links, und es gilt
 /// `a(x + y) = ax + ay`, `(a + b)x = ax + bx`, `(ab)x = a(bx)` und `1x = x`.
@@ -238,8 +310,8 @@ pub trait Bilinear<B, C, R, Map, Add = Additive, Mul = Multiplicative, Act = Sca
     Module<R, Add, Mul, Act>
 where
     R: CommutativeRing<Add, Mul>,
-    B: Module<R, Add, Mul, Act> + ?Sized,
-    C: Module<R, Add, Mul, Act> + ?Sized,
+    B: Module<R, Add, Mul, Act>,
+    C: Module<R, Add, Mul, Act>,
 {
 }
 
@@ -249,6 +321,8 @@ pub trait BilinearForm<K, Map, Add = Additive, Mul = Multiplicative, Act = Scala
 where
     K: Field<Add, Mul>,
 {
+    /// Wertet die Form an `(self, rhs)` aus.
+    fn form(&self, rhs: &Self) -> K;
 }
 
 /// Quadratische Form `Q: Self → K` über dem Körper `K`, benannt durch das Etikett `Q`.
@@ -259,6 +333,8 @@ pub trait QuadraticForm<K, Q, Add = Additive, Mul = Multiplicative, Act = Scalar
 where
     K: Field<Add, Mul>,
 {
+    /// Wertet die Form an `self` aus.
+    fn value(&self) -> K;
 }
 
 /// Algebra über dem kommutativen Ring `R`: ein Modul mit einer weiteren Verknüpfung `Prod`
@@ -328,7 +404,10 @@ pub trait DivisionAlgebra<
 // --- Involution ---
 
 /// Auf `Self` gibt es eine Involution `x ↦ x*`, benannt durch `Inv`: `(x*)* = x`.
-pub trait Involutive<Inv = Conjugation> {}
+pub trait Involutive<Inv = Conjugation>: Sized {
+    /// Wendet die Involution an: `x ↦ x*`.
+    fn conjugate(&self) -> Self;
+}
 
 /// Die Involution `Inv` ist verträglich mit `Op`: `(x ∘ y)* = x* ∘ y*`.
 pub trait Automorphism<Op, Inv = Conjugation>: Magma<Op> + Involutive<Inv> {}

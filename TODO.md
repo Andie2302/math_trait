@@ -10,7 +10,10 @@ Offene Themen und Ideen, grob nach Priorität.
 
 ## Lücken im bisherigen Entwurf
 
-- **Unäre Operationen**: Inverse (`Neg`, Kehrwert), Konjugation und Norm sind Funktionen `T → T`. Als leere Marker-Traits sind sie nur beschrieben, nicht ausgedrückt. Ebenso neutrale Elemente (0, 1) als Werte.
+- **Partielle Seite ohne Methoden**: `PartialMagma` und Verwandte brauchen `Option<Self>` als Ergebnis, das passt nicht in die Supertrait-Kette von `Magma`.
+- **Heterogenes `Bilinear`** hat noch keine Methode (die homogene Fassung ist `Magma::op`).
+- **Implementier-Aufwand**: Eine `Group` verlangt rund 25 Marker-Impls. Dafür werden Makros (`impl_group!` o. Ä.) gebraucht; im Test steht ein Vorläufer (`markers!`).
+- **Redundanz bei `Group`**: `ldiv`, `rdiv` und `inverse` bestimmen sich gegenseitig, müssen aber alle geschrieben werden.
 - **Analytische Norm** (`‖x‖ ≥ 0`, Dreiecksungleichung): braucht geordnete Körper bzw. Beträge. Bisher gibt es nur die algebraische Norm-Form (`CompositionAlgebra`).
 - **Rechtswirkung / Bimoduln**: bisher nur `LeftAction`. Nötig für Moduln über nicht-kommutativen Ringen.
 - **Getrennte Etiketten für Skalare und Vektoren** in `Module`: aktuell teilen sie sich `Add`/`Mul`.
@@ -19,7 +22,8 @@ Offene Themen und Ideen, grob nach Priorität.
 - **Zusammenhang Kürzbarkeit/Idempotenz**: `Band`, `Semilattice` (siehe `Idempotent`).
 - **Kein Default für `Op`** bei den Einzel-Verknüpfungs-Traits. Bei Bedarf ein Standard-Etikett einführen.
 
-## Später (Aufsatz-Crate)
+## Später
 
-- Implementierungen für Basisdatentypen und externe Crates.
-- Prüffunktionen für die Gesetze (Assoziativität, Distributivität usw.) zum Testen von Datentypen.
+- **Basisdatentypen und externe Crates** (`i32`, `f64`, `num-complex`, …): Wegen der Orphan-Regel können die Impls nicht in einem Aufsatz-Crate stehen, solange die Etiketten (`Additive`, …) aus `math_trait` kommen. Geplant: Feature-Flags in `math_trait` selbst. Die Zahlen-Traits (`numeric::Number`, `Integer`, `Float`, `Signed`, `Unsigned`) sind dafür vorbereitet.
+- **Semiring** und `CommutativeSemiring`, damit `Unsigned` (ℕ-artig) exakt ausgedrückt werden kann.
+- Prüffunktionen für die Gesetze (Assoziativität, Distributivität usw.) zum Testen von Datentypen. Mit den Methoden jetzt möglich.
