@@ -40,6 +40,7 @@
 //! Ring ⊂ CommutativeRing ⊂ Field        (mit zwei Verknüpfungen: Add, Mul)
 //! Module ⊂ VectorSpace;  Algebra ⊂ UnitalAlgebra ⊂ DivisionAlgebra ⊂ CompositionAlgebra
 //! Algebra ⊂ LieAlgebra                  (nicht assoziativ: [x, y], alternierend, Jacobi)
+//! TensorProduct, CliffordAlgebra, LieModule  (Strukturen mit einer Funktion: tensor, embed, lie_act)
 //! CayleyDickson<A, R>                  (verdoppelt eine Algebra mit Involution: ℝ → ℂ → ℍ → 𝕆 → 𝕊 …)
 //! Units<K>                             (die Einheitengruppe K×: Elemente ≠ 0 eines Schiefkörpers)
 //! Commutator<A, R>                      (jede assoziative Algebra A wird mit [x,y] = xy − yx eine LieAlgebra)
@@ -555,4 +556,97 @@ pub trait LieAlgebra<
 >: Algebra<R, Add, Mul, Act, Br> + Alternating<Br, Add> + Jacobi<Br, Add> where
     R: CommutativeRing<Add, Mul>,
 {
+}
+
+// --- Bilineare Abbildungen und Tensorprodukt ---
+
+/// Bilineare Abbildung `Self × B → C` mit der Methode `bilinear`. Das ist [`Bilinear`] zusammen
+/// mit der Funktion selbst, für Abbildungen zwischen *verschiedenen* Moduln.
+pub trait BilinearMap<
+    B,
+    C,
+    R,
+    Map,
+    Add = Additive,
+    Mul = Multiplicative,
+    Act = ScalarMultiplication,
+>: Bilinear<B, C, R, Map, Add, Mul, Act> where
+    R: CommutativeRing<Add, Mul>,
+    B: Module<R, Add, Mul, Act>,
+    C: Module<R, Add, Mul, Act>,
+{
+    /// Wertet die Abbildung an `(self, rhs)` aus.
+    fn bilinear(&self, rhs: &B) -> C;
+}
+
+/// Das Tensorprodukt `V ⊗ W` über `R`: `Self` ist ein Modul mit einer bilinearen Abbildung
+/// `tensor: V × W → Self`.
+///
+/// Die Elemente der Form `v ⊗ w` heißen *reine* Tensoren. Nicht jedes Element von `V ⊗ W` ist
+/// rein: In der Quantenmechanik sind genau die nicht reinen Tensoren *verschränkte* Zustände.
+///
+/// Dazu gehört die universelle Eigenschaft: Jede bilineare Abbildung `V × W → U` faktorisiert
+/// eindeutig über eine lineare Abbildung `Self → U`. Der Compiler prüft das nicht.
+pub trait TensorProduct<V, W, R, Add = Additive, Mul = Multiplicative, Act = ScalarMultiplication>:
+    Module<R, Add, Mul, Act>
+where
+    R: CommutativeRing<Add, Mul>,
+    V: Module<R, Add, Mul, Act>,
+    W: Module<R, Add, Mul, Act>,
+{
+    /// Das reine Tensorprodukt `v ⊗ w`, bilinear in `(v, w)`.
+    fn tensor(v: &V, w: &W) -> Self;
+}
+
+// --- Clifford-Algebren ---
+
+/// Clifford-Algebra von `(V, Q)` über dem Körper `K`: eine unitale Algebra `Self` mit einer
+/// linearen Einbettung `embed: V → Self`, für die `embed(v)² = Q(v) ⋅ 1` gilt.
+///
+/// Die *universelle* Eigenschaft (die Clifford-Algebra ist die „freieste“ solche Algebra, jede
+/// lineare Abbildung `f: V → A` mit `f(v)² = Q(v)` setzt sich eindeutig zu einem
+/// Algebra-Homomorphismus fort) kann der Compiler nicht prüfen.
+///
+/// Beispiele: ℂ, ℍ (über ℝ), die Pauli-Algebra der Spin-½-Teilchen und die Dirac-Algebra.
+pub trait CliffordAlgebra<V, K, Q, Add = Additive, Mul = Multiplicative, Act = ScalarMultiplication>:
+    UnitalAlgebra<K, Add, Mul, Act>
+where
+    K: Field<Add, Mul>,
+    V: VectorSpace<K, Add, Mul, Act> + QuadraticForm<K, Q, Add, Mul, Act>,
+{
+    /// Die lineare Einbettung `V → Self`.
+    fn embed(v: &V) -> Self;
+}
+
+// --- Darstellungen von Lie-Algebren ---
+
+/// Darstellung der Lie-Algebra `L` auf dem Modul `Self` über `R`: Jedes `x ∈ L` wirkt linear
+/// auf `Self`, und die Klammer wird zum Kommutator der Wirkungen:
+///
+/// ```text
+/// ρ([x, y]) = ρ(x) ∘ ρ(y) − ρ(y) ∘ ρ(x)
+/// ```
+///
+/// Jede Lie-Algebra wirkt auf sich selbst durch die Klammer, die *adjungierte Darstellung*
+/// (dafür gibt es ein Blanket-Impl). Dass das eine Darstellung ist, ist genau die
+/// Jacobi-Identität. In der Quantenmechanik sind die Zustandsräume Darstellungen der
+/// Symmetrie-Lie-Algebra, z. B. Spin ½ für `sl(2)` bzw. `su(2)`.
+pub trait LieModule<L, R>: Module<R>
+where
+    R: CommutativeRing,
+    L: LieAlgebra<R>,
+{
+    /// Die Wirkung `ρ(x)(v)`.
+    fn lie_act(x: &L, v: &Self) -> Self;
+}
+
+impl<L, R> LieModule<L, R> for L
+where
+    L: LieAlgebra<R>,
+    R: CommutativeRing,
+{
+    /// Die adjungierte Darstellung: `ad(x)(v) = [x, v]`.
+    fn lie_act(x: &L, v: &Self) -> Self {
+        <L as Magma<Bracket>>::op(x, v)
+    }
 }

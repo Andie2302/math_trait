@@ -4,14 +4,13 @@ Offene Themen und Ideen, grob nach Priorität.
 
 ## Geplant
 
-- **Weiter bei Lie-Algebren** (die Kommutator-Konstruktion `Commutator<A, R>` gibt es schon): Ideale, Darstellungen (adjungierte Darstellung), Killing-Form (eine `BilinearForm`), einhüllende Algebra, Lie-Gruppen.
-- **Clifford-Algebren**: Algebra, die von einer quadratischen Form erzeugt wird (`v∘v = Q(v)`). Baut auf `QuadraticForm` auf.
-- **Tensorrechnung**: Tensorprodukt von Moduln/Algebren.
+- **Weiter bei Lie-Algebren**: Ideale und Quotienten, Killing-Form (eine `BilinearForm` aus der Spur von `ad ∘ ad`, braucht endliche Dimension), einhüllende Algebra, Lie-Gruppen. Darstellungen (`LieModule`) gibt es.
+- **Clifford-Algebren**: die Konstruktion selbst (aus `(V, Q)` die freie Algebra bilden) fehlt. Das Trait `CliffordAlgebra` beschreibt nur Algebren, die schon eine Einbettung haben. Dazu: Spin-Gruppen, graduierte Struktur.
+- **Tensorrechnung**: Das Trait `TensorProduct` gibt es. Offen: Tensorprodukt von Algebren (komponentenweises Produkt), symmetrische/äußere Potenzen, Kontraktion, die Konstruktion `V ⊗ W` selbst als Typ.
 
 ## Lücken im bisherigen Entwurf
 
 - **Partielle Seite ohne Methoden**: `PartialMagma` und Verwandte brauchen `Option<Self>` als Ergebnis, das passt nicht in die Supertrait-Kette von `Magma`.
-- **Heterogenes `Bilinear`** hat noch keine Methode (die homogene Fassung ist `Magma::op`).
 - **Cayley-Dickson**: `CayleyDickson<A, R, G>` verdoppelt mit dem Parameter `γ` aus `G` (Standard `−1`). Offen: `DivisionAlgebra` (braucht geordnete Körper bzw. eine anisotrope Norm) und die Bedingung "assoziativ" für Verdopplungen ohne Kompositions-Voraussetzung. Die bedingten Impls (alternativ, assoziativ, kommutativ) stützen sich auf bekannte Sätze und die Tests, der Compiler beweist sie nicht.
 - **Makros für bedingte Impls**: Die bedingten Impls von `CayleyDickson` (Eigenschaften, die nur unter Voraussetzungen an die Ausgangsalgebra gelten) sind noch von Hand geschrieben.
 - **Analytische Norm** (`‖x‖ ≥ 0`, Dreiecksungleichung): braucht geordnete Körper bzw. Beträge. Bisher gibt es nur die algebraische Norm-Form (`CompositionAlgebra`).

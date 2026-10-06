@@ -126,3 +126,32 @@ fn commutator<A: AssociativeAlgebra<R>, R: CommutativeRing>() {
     fn need<L: LieAlgebra<R2>, R2: CommutativeRing>() {}
     need::<Commutator<A, R>, R>();
 }
+
+// Tensorprodukt, Clifford-Algebra, Darstellungen
+fn bilinear_map<S: BilinearMap<B, C, R, M>, B: Module<R>, C: Module<R>, R: CommutativeRing, M>() {
+    fn need<
+        U: Bilinear<B2, C2, R2, M2>,
+        B2: Module<R2>,
+        C2: Module<R2>,
+        R2: CommutativeRing,
+        M2,
+    >() {
+    }
+    need::<S, B, C, R, M>();
+}
+fn tensor_product<T: TensorProduct<V, W, R>, V: Module<R>, W: Module<R>, R: CommutativeRing>() {
+    fn need<U: Module<R2>, R2: CommutativeRing>() {}
+    need::<T, R>();
+}
+fn clifford<A: CliffordAlgebra<V, K, Q>, V: VectorSpace<K> + QuadraticForm<K, Q>, K: Field, Q>() {
+    fn need<U: UnitalAlgebra<K2>, K2: Field>() {}
+    need::<A, K>();
+}
+fn representation<V: LieModule<L, R>, L: LieAlgebra<R>, R: CommutativeRing>() {
+    fn need<U: Module<R2>, R2: CommutativeRing>() {}
+    need::<V, R>();
+}
+fn adjoint<L: LieAlgebra<R>, R: CommutativeRing>() {
+    fn need<U: LieModule<U, R2>, R2: CommutativeRing>() {}
+    need::<L, R>();
+}
