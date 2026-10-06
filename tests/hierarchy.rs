@@ -29,6 +29,8 @@ implies!(small_category: SmallCategory => Semigroupoid, UnitalPartialMagma);
 implies!(groupoid: Groupoid => SmallCategory);
 
 // Zusatzeigenschaften
+implies!(band: Band => Semigroup, Idempotent);
+implies!(semilattice: Semilattice => Band, CommutativeSemigroup);
 implies!(commutative: Commutative => Magma, Flexible);
 implies!(commutative_semigroup: CommutativeSemigroup => Semigroup, Commutative, Medial);
 implies!(commutative_monoid: CommutativeMonoid => Monoid, CommutativeSemigroup);
@@ -51,6 +53,14 @@ fn semiring<T: Semiring<A, M>, A, M>() {
 }
 fn commutative_semiring<T: CommutativeSemiring<A, M>, A, M>() {
     fn need<U: Semiring<A2, M2> + Commutative<M2>, A2, M2>() {}
+    need::<T, A, M>();
+}
+fn rng<T: Rng<A, M>, A, M>() {
+    fn need<U: AbelianGroup<A2> + Semigroup<M2> + Distributive<M2, A2>, A2, M2>() {}
+    need::<T, A, M>();
+}
+fn ring_is_rng<T: Ring<A, M>, A, M>() {
+    fn need<U: Rng<A2, M2>, A2, M2>() {}
     need::<T, A, M>();
 }
 fn ring_is_semiring<T: Ring<A, M>, A, M>() {

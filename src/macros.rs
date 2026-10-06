@@ -253,6 +253,42 @@ macro_rules! impl_commutative_semigroup {
     };
 }
 
+/// Band: idempotente Halbgruppe.
+#[macro_export]
+macro_rules! impl_band {
+    (for [$($g:tt)*] $t:ty, $op:ty; op($a:ident, $b:ident) $body:block) => {
+        $crate::__semigroup_markers!([$($g)*] $t, $op);
+        $crate::__markers!([$($g)*] $t, $op: Idempotent, Band);
+        $crate::__impl_op!([$($g)*] $t, $op, $a, $b, $body);
+    };
+    ($t:ty, $op:ty; op($a:ident, $b:ident) $body:block) => {
+        $crate::impl_band!(for [] $t, $op; op($a, $b) $body);
+    };
+}
+
+/// Halbverband: kommutative, idempotente Halbgruppe, z. B. `max` oder die Mengenvereinigung.
+///
+/// ```
+/// use math_trait::{impl_semilattice, Magma, Semilattice};
+/// struct Join;
+/// struct Max(u8);
+/// impl_semilattice!(Max, Join; op(a, b) { Max(a.0.max(b.0)) });
+/// fn takes<S: Semilattice<Join>>() {}
+/// takes::<Max>();
+/// ```
+#[macro_export]
+macro_rules! impl_semilattice {
+    (for [$($g:tt)*] $t:ty, $op:ty; op($a:ident, $b:ident) $body:block) => {
+        $crate::__semigroup_markers!([$($g)*] $t, $op);
+        $crate::__commutative_markers!([$($g)*] $t, $op);
+        $crate::__markers!([$($g)*] $t, $op: Idempotent, Band, Semilattice);
+        $crate::__impl_op!([$($g)*] $t, $op, $a, $b, $body);
+    };
+    ($t:ty, $op:ty; op($a:ident, $b:ident) $body:block) => {
+        $crate::impl_semilattice!(for [] $t, $op; op($a, $b) $body);
+    };
+}
+
 /// Monoid: assoziatives `op` mit neutralem Element `identity`.
 ///
 /// ```
@@ -376,11 +412,19 @@ macro_rules! impl_abelian_group {
 
 #[doc(hidden)]
 #[macro_export]
-macro_rules! __semiring_markers {
+macro_rules! __distributive_markers {
     ([$($g:tt)*] $t:ty, $add:ty, $mul:ty) => {
         impl<$($g)*> $crate::LeftDistributive<$mul, $add> for $t {}
         impl<$($g)*> $crate::RightDistributive<$mul, $add> for $t {}
         impl<$($g)*> $crate::Distributive<$mul, $add> for $t {}
+    };
+}
+
+#[doc(hidden)]
+#[macro_export]
+macro_rules! __semiring_markers {
+    ([$($g:tt)*] $t:ty, $add:ty, $mul:ty) => {
+        $crate::__distributive_markers!([$($g)*] $t, $add, $mul);
         impl<$($g)*> $crate::Annihilating<$mul, $add> for $t {}
         impl<$($g)*> $crate::Semiring<$add, $mul> for $t {}
     };
@@ -391,6 +435,7 @@ macro_rules! __semiring_markers {
 macro_rules! __ring_markers {
     ([$($g:tt)*] $t:ty, $add:ty, $mul:ty) => {
         $crate::__semiring_markers!([$($g)*] $t, $add, $mul);
+        impl<$($g)*> $crate::Rng<$add, $mul> for $t {}
         impl<$($g)*> $crate::Ring<$add, $mul> for $t {}
     };
 }
@@ -453,6 +498,26 @@ macro_rules! impl_commutative_semiring {
         mul($c:ident, $d:ident) $mulb:block one() $one:block) => {
         $crate::impl_commutative_semiring!(for [] $t, $add, $mul;
             add($a, $b) $addb zero() $zero mul($c, $d) $mulb one() $one);
+    };
+}
+
+/// Rng (Ring ohne Eins): abelsche Gruppe `add`, Halbgruppe `mul`, Distributivgesetz.
+#[macro_export]
+macro_rules! impl_rng {
+    (for [$($g:tt)*] $t:ty, $add:ty, $mul:ty;
+        add($a:ident, $b:ident) $addb:block zero() $zero:block neg($n:ident) $negb:block
+        mul($c:ident, $d:ident) $mulb:block) => {
+        $crate::impl_abelian_group!(for [$($g)*] $t, $add;
+            op($a, $b) $addb identity() $zero inverse($n) $negb);
+        $crate::impl_semigroup!(for [$($g)*] $t, $mul; op($c, $d) $mulb);
+        $crate::__distributive_markers!([$($g)*] $t, $add, $mul);
+        impl<$($g)*> $crate::Rng<$add, $mul> for $t {}
+    };
+    ($t:ty, $add:ty, $mul:ty;
+        add($a:ident, $b:ident) $addb:block zero() $zero:block neg($n:ident) $negb:block
+        mul($c:ident, $d:ident) $mulb:block) => {
+        $crate::impl_rng!(for [] $t, $add, $mul;
+            add($a, $b) $addb zero() $zero neg($n) $negb mul($c, $d) $mulb);
     };
 }
 

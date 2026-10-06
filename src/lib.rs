@@ -52,7 +52,8 @@
 //!
 //! Eine Gruppe verlangt 15 Impls, eine Lie-Algebra weit mehr. Die Makros `impl_magma!`,
 //! `impl_unital_magma!`, `impl_quasigroup!`, `impl_loop!`, `impl_semigroup!`, `impl_monoid!`,
-//! `impl_group!`, `impl_abelian_group!`, `impl_semiring!`, `impl_ring!`, `impl_field!`,
+//! `impl_band!`, `impl_semilattice!`, `impl_group!`, `impl_abelian_group!`, `impl_semiring!`,
+//! `impl_rng!`, `impl_ring!`, `impl_field!`,
 //! `impl_star_ring!`, `impl_module!`, `impl_algebra!` (mit Zusätzen wie
 //! `impl_unital_algebra!`; für Ringe `impl_ring_algebra!`), `impl_algebra_with_involution!`,
 //! `impl_composition_algebra!` und `impl_lie_algebra!` erzeugen sie aus kurzen Rümpfen. Alle nehmen
@@ -177,6 +178,12 @@ pub trait CommutativeMonoid<Op>: Monoid<Op> + CommutativeSemigroup<Op> {}
 /// Gruppe mit kommutativer Verknüpfung.
 pub trait AbelianGroup<Op>: Group<Op> + CommutativeMonoid<Op> {}
 
+/// Band: idempotente Halbgruppe, `x ∘ x = x`.
+pub trait Band<Op>: Semigroup<Op> + Idempotent<Op> {}
+
+/// Halbverband: kommutatives Band, z. B. `max`, `min`, Mengenvereinigung, `ggT`, logisches Oder.
+pub trait Semilattice<Op>: Band<Op> + CommutativeSemigroup<Op> {}
+
 // --- Kürzbarkeit ---
 
 /// Linkskürzbar: `x ∘ y = x ∘ z` impliziert `y = z`.
@@ -295,9 +302,16 @@ pub trait CommutativeSemiring<Add = Additive, Mul = Multiplicative>:
 {
 }
 
-/// Ring: ein Halbring, dessen Addition eine abelsche Gruppe ist (es gibt additive Inverse).
+/// Rng: Ring ohne Eins. `(R, Add)` ist eine abelsche Gruppe, `(R, Mul)` eine Halbgruppe, und
+/// `Mul` distribuiert über `Add`. Ein Beispiel sind die geraden ganzen Zahlen.
+pub trait Rng<Add = Additive, Mul = Multiplicative>:
+    AbelianGroup<Add> + Semigroup<Mul> + Distributive<Mul, Add>
+{
+}
+
+/// Ring: ein Rng mit Einselement. Zugleich ein Halbring mit additiven Inversen.
 pub trait Ring<Add = Additive, Mul = Multiplicative>:
-    Semiring<Add, Mul> + AbelianGroup<Add>
+    Rng<Add, Mul> + Semiring<Add, Mul> + AbelianGroup<Add>
 {
 }
 
