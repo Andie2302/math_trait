@@ -41,6 +41,7 @@
 //! Module ⊂ VectorSpace;  Algebra ⊂ UnitalAlgebra ⊂ DivisionAlgebra ⊂ CompositionAlgebra
 //! Algebra ⊂ LieAlgebra                  (nicht assoziativ: [x, y], alternierend, Jacobi)
 //! Vector<R, N>, Tensor<R, M, N>, Clifford<R, D, Q>  (konkrete Konstruktionen: R^N, V ⊗ W, freie Clifford-Algebra)
+//! GradedAlgebra ⊃ Clifford, EvenSubalgebra, Rotor (die Spin-Gruppe: gerade Elemente mit s·s̃ = 1)
 //! TensorProduct, CliffordAlgebra, LieModule  (Strukturen mit einer Funktion: tensor, embed, lie_act)
 //! CayleyDickson<A, R>                  (verdoppelt eine Algebra mit Involution: ℝ → ℂ → ℍ → 𝕆 → 𝕊 …)
 //! Units<K>                             (die Einheitengruppe K×: Elemente ≠ 0 eines Schiefkörpers)
@@ -74,7 +75,7 @@ mod units;
 
 pub use cayley_dickson::{CayleyDickson, Gamma, MinusOne};
 pub use commutator::Commutator;
-pub use constructions::{Clifford, DiagonalForm, Tensor, Vector};
+pub use constructions::{Clifford, DiagonalForm, EvenSubalgebra, Rotor, Tensor, Vector};
 pub use units::Units;
 
 // --- Etiketten für Verknüpfungen ---
@@ -94,6 +95,14 @@ pub struct ScalarMultiplication;
 /// Etikett für die Konjugation, die Standard-Involution `x ↦ x*`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Conjugation;
+
+/// Etikett für die Umkehrung (*reversion*) `x ↦ x̃`: kehrt die Reihenfolge der Faktoren um.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct Reversion;
+
+/// Etikett für die Gradinvolution `x ↦ x̂`: das Vorzeichen der ungeraden Anteile wird umgekehrt.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct GradeInvolution;
 
 /// Etikett für die Norm-Form `N(x) = x ∘ x*`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -665,5 +674,40 @@ where
     /// Die adjungierte Darstellung: `ad(x)(v) = [x, v]`.
     fn lie_act(x: &L, v: &Self) -> Self {
         <L as Magma<Bracket>>::op(x, v)
+    }
+}
+
+// --- Graduierte Algebren ---
+
+/// Eine ℤ/2-graduierte Algebra (*Superalgebra*): `A = A₀ ⊕ A₁` mit `Aᵢ ⋅ Aⱼ ⊆ A_{i+j}`. Das
+/// Produkt zweier gerader oder zweier ungerader Elemente ist gerade, das Produkt eines geraden
+/// und eines ungeraden ist ungerade.
+///
+/// Die Teile summieren sich zum Element: `x = even_part(x) + odd_part(x)`. Der Compiler prüft
+/// die Verträglichkeit mit dem Produkt nicht.
+///
+/// Beispiele: Clifford-Algebren (gerade und ungerade Grade), das Matrix-Beispiel der
+/// Fermionen und Bosonen in der Quantenmechanik.
+pub trait GradedAlgebra<
+    R,
+    Add = Additive,
+    Mul = Multiplicative,
+    Act = ScalarMultiplication,
+    Prod = Multiplicative,
+>: UnitalAlgebra<R, Add, Mul, Act, Prod> where
+    R: CommutativeRing<Add, Mul>,
+{
+    /// Der gerade Anteil `A₀`.
+    fn even_part(&self) -> Self;
+
+    /// Der ungerade Anteil `A₁`.
+    fn odd_part(&self) -> Self;
+
+    /// Die Gradinvolution `x̂ = gerade − ungerade`. Sie ist ein Algebra-Automorphismus.
+    fn grade_involution(&self) -> Self {
+        <Self as Magma<Add>>::op(
+            &self.even_part(),
+            &<Self as Group<Add>>::inverse(&self.odd_part()),
+        )
     }
 }

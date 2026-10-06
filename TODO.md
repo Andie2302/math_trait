@@ -5,7 +5,7 @@ Offene Themen und Ideen, grob nach Priorität.
 ## Geplant
 
 - **Weiter bei Lie-Algebren**: Ideale und Quotienten, Killing-Form (eine `BilinearForm` aus der Spur von `ad ∘ ad`, braucht endliche Dimension), einhüllende Algebra, Lie-Gruppen. Darstellungen (`LieModule`) gibt es.
-- **Clifford-Algebren**: `Clifford<R, D, Q>` ist die freie Clifford-Algebra zu **Diagonalformen** (Erzeuger-Quadrate `qᵢ`), mit `lift` als universeller Eigenschaft. Offen: nicht diagonale Formen (Basiswechsel), Spin-Gruppen, die graduierte Struktur (gerader und ungerader Teil), Hodge-Dualität.
+- **Clifford-Algebren**: `Clifford<R, D, Q>` ist die freie Clifford-Algebra zu **Diagonalformen**, mit `lift`, Graduierung (`GradedAlgebra`), den drei Involutionen, der geraden Unteralgebra (`EvenSubalgebra`) und der Rotorgruppe (`Rotor`). Offen: nicht diagonale Formen (Basiswechsel), die Pin-Gruppe (Spiegelungen), die ℤ-Graduierung als eigenes Trait (nur ℤ/2 ist ein Trait, die Grade stehen als `grade_part`), Hodge-Dualität, Spinor-Darstellungen als `LieModule` (die Lie-Algebra der Bivektoren).
 - **Tensorrechnung**: `Tensor<R, M, N>` ist `R^M ⊗ R^N` mit `lift` und `is_pure`. Offen: mehr als zwei Faktoren, Tensorprodukt von Algebren (komponentenweises Produkt), Kronecker-Produkt linearer Abbildungen, symmetrische und äußere Potenzen, Kontraktion.
 
 ## Lücken im bisherigen Entwurf

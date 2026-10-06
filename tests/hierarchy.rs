@@ -165,3 +165,9 @@ fn adjoint<L: LieAlgebra<R>, R: CommutativeRing>() {
     fn need<U: LieAlgebra<R2> + LieModule<U, R2>, R2: CommutativeRing>() {}
     need::<L, R>();
 }
+
+// Graduierte Algebren
+fn graded<A: GradedAlgebra<R>, R: CommutativeRing>() {
+    fn need<U: UnitalAlgebra<R2>, R2: CommutativeRing>() {}
+    need::<A, R>();
+}

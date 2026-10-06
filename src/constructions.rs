@@ -9,10 +9,11 @@ use core::fmt;
 use core::marker::PhantomData;
 
 use crate::{
-    Additive, CliffordAlgebra, CommutativeRing, Field, Group, LeftAction, Magma, Module,
-    Multiplicative, QuadraticForm, Ring, TensorProduct, UnitalAlgebra, UnitalMagma,
-    impl_abelian_group, impl_algebra, impl_associative_algebra, impl_module, impl_monoid,
-    impl_unital_algebra,
+    Additive, AntiAutomorphism, Automorphism, CliffordAlgebra, CommutativeRing, Field,
+    GradeInvolution, GradedAlgebra, Group, Involutive, LeftAction, Magma, Module, Multiplicative,
+    QuadraticForm, Reversion, Ring, TensorProduct, UnitalAlgebra, UnitalMagma, impl_abelian_group,
+    impl_algebra, impl_algebra_with_involution, impl_associative_algebra, impl_group, impl_module,
+    impl_monoid, impl_unital_algebra,
 };
 
 // --- Hilfsfunktionen in `R` ------------------------------------------------------------------
@@ -407,3 +408,315 @@ impl<R: Magma<Additive> + UnitalMagma<Additive>> CloneViaAdd for R {
         add(self, &zero())
     }
 }
+
+// =================================================================================================
+// Graduierung der Clifford-Algebra
+// =================================================================================================
+
+/// Kopiert ein Ringelement ohne `Clone`-Bedingung: `x + 0`.
+fn copy<R: Magma<Additive> + UnitalMagma<Additive>>(x: &R) -> R {
+    add(x, &zero())
+}
+
+impl<R, const D: usize, Q> Clifford<R, D, Q>
+where
+    R: CommutativeRing,
+    Q: DiagonalForm<R>,
+{
+    /// Der Anteil vom Grad `k`: nur die Basiselemente `e_S` mit `|S| = k` bleiben stehen.
+    ///
+    /// Grad 0 sind die Skalare, Grad 1 die Vektoren, Grad 2 die *Bivektoren* und so fort.
+    pub fn grade_part(&self, k: usize) -> Self {
+        Self::new(from_fn(|s| {
+            if s.count_ones() as usize == k {
+                copy(&self.c[s])
+            } else {
+                zero()
+            }
+        }))
+    }
+
+    /// Wendet ein Vorzeichen `(-1)^f(k)` auf den Grad-`k`-Anteil an.
+    fn signed_by_grade(&self, negate: impl Fn(u32) -> bool) -> Self {
+        Self::new(from_fn(|s| {
+            if negate(s.count_ones()) {
+                neg(&self.c[s])
+            } else {
+                copy(&self.c[s])
+            }
+        }))
+    }
+
+    /// Die Umkehrung `x̃`: kehrt die Reihenfolge der Faktoren um, `(x ⋅ y)~ = ỹ ⋅ x̃`. Auf dem
+    /// Grad-`k`-Anteil ist sie das Vorzeichen `(−1)^{k(k−1)/2}`.
+    pub fn reverse(&self) -> Self {
+        self.signed_by_grade(|k| (k * k.wrapping_sub(1) / 2) % 2 == 1)
+    }
+
+    /// Die Clifford-Konjugation `x̄ = ̂x̃` (Gradinvolution nach Umkehrung): Auf dem Grad-`k`-Anteil
+    /// das Vorzeichen `(−1)^{k(k+1)/2}`. Sie verallgemeinert die komplexe und die
+    /// Quaternionen-Konjugation.
+    pub fn clifford_conjugate(&self) -> Self {
+        self.signed_by_grade(|k| (k * (k + 1) / 2) % 2 == 1)
+    }
+
+    /// Das „Sandwich“ `s ⋅ v ⋅ s̃`. Für einen [`Rotor`] `s` ist das die Drehung von `v`.
+    pub fn sandwich(&self, v: &Self) -> Self {
+        clifford_product(&clifford_product(self, v), &self.reverse())
+    }
+}
+
+impl<R, const D: usize, Q> Clifford<R, D, Q>
+where
+    R: CommutativeRing + PartialEq,
+    Q: DiagonalForm<R>,
+{
+    /// Ist das Element gerade (nur gerade Grade)?
+    pub fn is_even(&self) -> bool {
+        self.odd_part() == Self::new(from_fn(|_| zero()))
+    }
+
+    /// Ist das Element ungerade (nur ungerade Grade)?
+    pub fn is_odd(&self) -> bool {
+        self.even_part() == Self::new(from_fn(|_| zero()))
+    }
+}
+
+impl<R, const D: usize, Q> GradedAlgebra<R> for Clifford<R, D, Q>
+where
+    R: CommutativeRing,
+    Q: DiagonalForm<R>,
+{
+    fn even_part(&self) -> Self {
+        Self::new(from_fn(|s| {
+            if s.count_ones() % 2 == 0 {
+                copy(&self.c[s])
+            } else {
+                zero()
+            }
+        }))
+    }
+
+    fn odd_part(&self) -> Self {
+        Self::new(from_fn(|s| {
+            if s.count_ones() % 2 == 1 {
+                copy(&self.c[s])
+            } else {
+                zero()
+            }
+        }))
+    }
+}
+
+// Die Clifford-Konjugation ist die Standard-Involution der Algebra.
+impl_algebra_with_involution!(
+    for [R: CommutativeRing, const D: usize, Q: DiagonalForm<R>] Clifford<R, D, Q>, R, Multiplicative;
+    conjugate(x) { x.clifford_conjugate() }
+);
+
+// Umkehrung: kehrt das Produkt um.
+impl<R, const D: usize, Q> Involutive<Reversion> for Clifford<R, D, Q>
+where
+    R: CommutativeRing,
+    Q: DiagonalForm<R>,
+{
+    fn conjugate(&self) -> Self {
+        self.reverse()
+    }
+}
+impl<R, const D: usize, Q> Automorphism<Additive, Reversion> for Clifford<R, D, Q>
+where
+    R: CommutativeRing,
+    Q: DiagonalForm<R>,
+{
+}
+impl<R, const D: usize, Q> AntiAutomorphism<Multiplicative, Reversion> for Clifford<R, D, Q>
+where
+    R: CommutativeRing,
+    Q: DiagonalForm<R>,
+{
+}
+
+// Gradinvolution: erhält das Produkt.
+impl<R, const D: usize, Q> Involutive<GradeInvolution> for Clifford<R, D, Q>
+where
+    R: CommutativeRing,
+    Q: DiagonalForm<R>,
+{
+    fn conjugate(&self) -> Self {
+        self.grade_involution()
+    }
+}
+impl<R, const D: usize, Q> Automorphism<Additive, GradeInvolution> for Clifford<R, D, Q>
+where
+    R: CommutativeRing,
+    Q: DiagonalForm<R>,
+{
+}
+impl<R, const D: usize, Q> Automorphism<Multiplicative, GradeInvolution> for Clifford<R, D, Q>
+where
+    R: CommutativeRing,
+    Q: DiagonalForm<R>,
+{
+}
+
+// =================================================================================================
+// Die gerade Unteralgebra
+// =================================================================================================
+
+/// Die gerade Unteralgebra `Cl⁰`: die Elemente, die nur aus Basiselementen geraden Grades
+/// bestehen. Sie ist unter Summe und Produkt abgeschlossen und enthält die Eins, also selbst
+/// eine assoziative Algebra mit `D/2` Basiselementen.
+///
+/// Für `N = 3` und `q = (−1, −1, −1)` ist sie isomorph zu den Quaternionen.
+pub struct EvenSubalgebra<R, const D: usize, Q>(Clifford<R, D, Q>);
+
+impl<R, const D: usize, Q> EvenSubalgebra<R, D, Q>
+where
+    R: CommutativeRing,
+    Q: DiagonalForm<R>,
+{
+    /// Der gerade Anteil von `x`.
+    pub fn from_even_part(x: &Clifford<R, D, Q>) -> Self {
+        EvenSubalgebra(x.even_part())
+    }
+
+    /// Das Element als Element der gesamten Algebra.
+    pub fn get(&self) -> &Clifford<R, D, Q> {
+        &self.0
+    }
+
+    /// Gibt das Element der gesamten Algebra zurück.
+    pub fn into_inner(self) -> Clifford<R, D, Q> {
+        self.0
+    }
+}
+
+impl<R, const D: usize, Q> EvenSubalgebra<R, D, Q>
+where
+    R: CommutativeRing + PartialEq,
+    Q: DiagonalForm<R>,
+{
+    /// `Some`, wenn `x` gerade ist, sonst `None`.
+    pub fn new(x: Clifford<R, D, Q>) -> Option<Self> {
+        x.is_even().then_some(EvenSubalgebra(x))
+    }
+}
+
+impl<R: Clone, const D: usize, Q> Clone for EvenSubalgebra<R, D, Q> {
+    fn clone(&self) -> Self {
+        EvenSubalgebra(self.0.clone())
+    }
+}
+impl<R: Copy, const D: usize, Q> Copy for EvenSubalgebra<R, D, Q> {}
+impl<R: PartialEq, const D: usize, Q> PartialEq for EvenSubalgebra<R, D, Q> {
+    fn eq(&self, other: &Self) -> bool {
+        self.0 == other.0
+    }
+}
+impl<R: fmt::Debug, const D: usize, Q> fmt::Debug for EvenSubalgebra<R, D, Q> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_tuple("EvenSubalgebra").field(&self.0).finish()
+    }
+}
+
+impl_abelian_group!(
+    for [R: CommutativeRing, const D: usize, Q: DiagonalForm<R>] EvenSubalgebra<R, D, Q>, Additive;
+    op(a, b) {
+        EvenSubalgebra(<Clifford<R, D, Q> as Magma<Additive>>::op(&a.0, &b.0))
+    }
+    identity() { EvenSubalgebra(<Clifford<R, D, Q> as UnitalMagma<Additive>>::identity()) }
+    inverse(a) { EvenSubalgebra(<Clifford<R, D, Q> as Group<Additive>>::inverse(&a.0)) }
+);
+
+impl_module!(
+    for [R: CommutativeRing, const D: usize, Q: DiagonalForm<R>] EvenSubalgebra<R, D, Q>, R;
+    act(s, x) { EvenSubalgebra(<Clifford<R, D, Q> as LeftAction<R>>::act(s, &x.0)) }
+);
+
+impl_monoid!(
+    for [R: CommutativeRing, const D: usize, Q: DiagonalForm<R>] EvenSubalgebra<R, D, Q>,
+    Multiplicative;
+    op(a, b) { EvenSubalgebra(clifford_product(&a.0, &b.0)) }
+    identity() { EvenSubalgebra(Clifford::scalar(one())) }
+);
+
+impl_algebra!(
+    for [R: CommutativeRing, const D: usize, Q: DiagonalForm<R>] EvenSubalgebra<R, D, Q>,
+    R, Multiplicative
+);
+impl_unital_algebra!(
+    for [R: CommutativeRing, const D: usize, Q: DiagonalForm<R>] EvenSubalgebra<R, D, Q>,
+    R, Multiplicative
+);
+impl_associative_algebra!(
+    for [R: CommutativeRing, const D: usize, Q: DiagonalForm<R>] EvenSubalgebra<R, D, Q>,
+    R, Multiplicative
+);
+
+// =================================================================================================
+// Die Rotorgruppe (Spin-Gruppe)
+// =================================================================================================
+
+/// Ein *Rotor*: ein gerades Element `s` mit `s ⋅ s̃ = 1`. Die Rotoren bilden eine Gruppe, die
+/// **Spin-Gruppe**; das Inverse von `s` ist die Umkehrung `s̃`.
+///
+/// Ein Rotor wirkt durch `v ↦ s ⋅ v ⋅ s̃` auf die Vektoren (Elemente vom Grad 1): Das ist eine
+/// lineare Abbildung, die die quadratische Form erhält, also eine Drehung. `s` und `−s` ergeben
+/// dieselbe Drehung: Die Spin-Gruppe ist eine *zweifache Überlagerung* der Drehgruppe. Im
+/// euklidischen `N = 3` sind die Rotoren die Einheitsquaternionen (`SU(2)`), die Drehungen mit
+/// Spin ½ in der Quantenmechanik.
+pub struct Rotor<R, const D: usize, Q>(Clifford<R, D, Q>);
+
+impl<R, const D: usize, Q> Rotor<R, D, Q>
+where
+    R: CommutativeRing + PartialEq,
+    Q: DiagonalForm<R>,
+{
+    /// `Some`, wenn `s` gerade ist und `s ⋅ s̃ = 1` gilt, sonst `None`.
+    pub fn new(s: Clifford<R, D, Q>) -> Option<Self> {
+        let unit = s.is_even() && clifford_product(&s, &s.reverse()) == Clifford::scalar(one());
+        unit.then_some(Rotor(s))
+    }
+}
+
+impl<R, const D: usize, Q> Rotor<R, D, Q>
+where
+    R: CommutativeRing,
+    Q: DiagonalForm<R>,
+{
+    /// Das zugrunde liegende gerade Element.
+    pub fn get(&self) -> &Clifford<R, D, Q> {
+        &self.0
+    }
+
+    /// Die Drehung `v ↦ s ⋅ v ⋅ s̃` des Vektors `v`.
+    pub fn rotate(&self, v: &Clifford<R, D, Q>) -> Clifford<R, D, Q> {
+        self.0.sandwich(v)
+    }
+}
+
+impl<R: Clone, const D: usize, Q> Clone for Rotor<R, D, Q> {
+    fn clone(&self) -> Self {
+        Rotor(self.0.clone())
+    }
+}
+impl<R: Copy, const D: usize, Q> Copy for Rotor<R, D, Q> {}
+impl<R: PartialEq, const D: usize, Q> PartialEq for Rotor<R, D, Q> {
+    fn eq(&self, other: &Self) -> bool {
+        self.0 == other.0
+    }
+}
+impl<R: fmt::Debug, const D: usize, Q> fmt::Debug for Rotor<R, D, Q> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_tuple("Rotor").field(&self.0).finish()
+    }
+}
+
+// Das Produkt zweier Rotoren ist ein Rotor: (st)(st)~ = s t t̃ s̃ = s s̃ = 1.
+impl_group!(
+    for [R: CommutativeRing, const D: usize, Q: DiagonalForm<R>] Rotor<R, D, Q>, Multiplicative;
+    op(a, b) { Rotor(clifford_product(&a.0, &b.0)) }
+    identity() { Rotor(Clifford::scalar(one())) }
+    inverse(a) { Rotor(a.0.reverse()) }
+);
