@@ -1,0 +1,8 @@
+[package]
+name = "math_trait"
+version = "0.1.0"
+edition = "2024"
+description = "Ein Trait-System für Mathematik (und mehr), unabhängig von konkreten Basisdatentypen"
+license = "MIT OR Apache-2.0"
+
+[dependencies]
