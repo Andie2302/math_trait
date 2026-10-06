@@ -19,6 +19,9 @@ pub trait Group: Monoid + Loop {}
 /// Magma, dessen Verknüpfung kommutativ ist: `a ∘ b = b ∘ a`.
 pub trait Commutative: Magma {}
 
+/// Magma, in dem jedes Element mit sich selbst verknüpft sich selbst ergibt: `a ∘ a = a`.
+pub trait Idempotent: Magma {}
+
 /// Monoid mit kommutativer Verknüpfung.
 pub trait CommutativeMonoid: Monoid + Commutative {}
 
