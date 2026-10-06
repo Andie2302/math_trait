@@ -12,6 +12,14 @@ pub struct Multiplicative;
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct ScalarMultiplication;
 
+/// Etikett für die Konjugation, die Standard-Involution `x ↦ x*`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct Conjugation;
+
+/// Etikett für die Norm-Form `N(x) = x ∘ x*`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct Norm;
+
 // --- Partielle Seite: die Verknüpfung gilt nicht für jedes Paar ---
 
 /// Menge mit Verknüpfung, die nicht für alle Paare definiert sein muss.
@@ -222,6 +230,37 @@ where
 {
 }
 
+/// Bilineare Abbildung `Self × B → C` über dem kommutativen Ring `R`, benannt durch das Etikett `Map`.
+///
+/// Linear in jedem Argument: `f(x + x', y) = f(x, y) + f(x', y)`, `f(x, y + y') = f(x, y) + f(x, y')`
+/// und `f(ax, y) = a f(x, y) = f(x, ay)`. `Self`, `B` und `C` sind Moduln über `R`.
+pub trait Bilinear<B, C, R, Map, Add = Additive, Mul = Multiplicative, Act = ScalarMultiplication>:
+    Module<R, Add, Mul, Act>
+where
+    R: CommutativeRing<Add, Mul>,
+    B: Module<R, Add, Mul, Act> + ?Sized,
+    C: Module<R, Add, Mul, Act> + ?Sized,
+{
+}
+
+/// Bilinearform `Self × Self → K` über dem Körper `K` (Sonderfall von [`Bilinear`] mit `C = K`).
+pub trait BilinearForm<K, Map, Add = Additive, Mul = Multiplicative, Act = ScalarMultiplication>:
+    VectorSpace<K, Add, Mul, Act>
+where
+    K: Field<Add, Mul>,
+{
+}
+
+/// Quadratische Form `Q: Self → K` über dem Körper `K`, benannt durch das Etikett `Q`.
+///
+/// Es gilt `Q(ax) = a² Q(x)`, und `Q(x + y) − Q(x) − Q(y)` ist eine [`BilinearForm`].
+pub trait QuadraticForm<K, Q, Add = Additive, Mul = Multiplicative, Act = ScalarMultiplication>:
+    VectorSpace<K, Add, Mul, Act>
+where
+    K: Field<Add, Mul>,
+{
+}
+
 /// Algebra über dem kommutativen Ring `R`: ein Modul mit einer weiteren Verknüpfung `Prod`
 /// (`Self × Self → Self`), die über `Add` distribuiert und mit den Skalaren verträglich ist:
 /// `(ax)y = a(xy) = x(ay)`. Assoziativität wird *nicht* verlangt.
@@ -231,7 +270,8 @@ pub trait Algebra<
     Mul = Multiplicative,
     Act = ScalarMultiplication,
     Prod = Multiplicative,
->: Module<R, Add, Mul, Act> + Distributive<Prod, Add> where
+>:
+    Module<R, Add, Mul, Act> + Distributive<Prod, Add> + Bilinear<Self, Self, R, Prod, Add, Mul, Act> where
     R: CommutativeRing<Add, Mul>,
 {
 }
@@ -282,5 +322,58 @@ pub trait DivisionAlgebra<
     Prod = Multiplicative,
 >: UnitalAlgebra<R, Add, Mul, Act, Prod> where
     R: CommutativeRing<Add, Mul>,
+{
+}
+
+// --- Involution ---
+
+/// Auf `Self` gibt es eine Involution `x ↦ x*`, benannt durch `Inv`: `(x*)* = x`.
+pub trait Involutive<Inv = Conjugation> {}
+
+/// Die Involution `Inv` ist verträglich mit `Op`: `(x ∘ y)* = x* ∘ y*`.
+pub trait Automorphism<Op, Inv = Conjugation>: Magma<Op> + Involutive<Inv> {}
+
+/// Die Involution `Inv` kehrt `Op` um: `(x ∘ y)* = y* ∘ x*`.
+pub trait AntiAutomorphism<Op, Inv = Conjugation>: Magma<Op> + Involutive<Inv> {}
+
+/// *-Ring: Ring mit Involution, die `Add` erhält und `Mul` umkehrt.
+pub trait StarRing<Add = Additive, Mul = Multiplicative, Inv = Conjugation>:
+    Ring<Add, Mul> + Automorphism<Add, Inv> + AntiAutomorphism<Mul, Inv>
+{
+}
+
+/// Algebra mit `R`-linearer Involution, die `Add` erhält und `Prod` umkehrt (z. B. Konjugation in ℂ, ℍ, 𝕆).
+pub trait AlgebraWithInvolution<
+    R,
+    Add = Additive,
+    Mul = Multiplicative,
+    Act = ScalarMultiplication,
+    Prod = Multiplicative,
+    Inv = Conjugation,
+>: Algebra<R, Add, Mul, Act, Prod> + Automorphism<Add, Inv> + AntiAutomorphism<Prod, Inv> where
+    R: CommutativeRing<Add, Mul>,
+{
+}
+
+// --- Norm ---
+
+/// Kompositionsalgebra über dem Körper `K`: unitale Algebra mit Involution und
+/// nicht ausgearteter quadratischer Norm-Form `Nm(x) = x ∘ x*`, die multiplikativ ist:
+/// `Nm(x ∘ y) = Nm(x) ⋅ Nm(y)`.
+///
+/// Nach dem Satz von Hurwitz sind das (über ℝ) genau ℝ, ℂ, ℍ und 𝕆. Die Sedenionen sind keine.
+pub trait CompositionAlgebra<
+    K,
+    Add = Additive,
+    Mul = Multiplicative,
+    Act = ScalarMultiplication,
+    Prod = Multiplicative,
+    Inv = Conjugation,
+    Nm = Norm,
+>:
+    UnitalAlgebra<K, Add, Mul, Act, Prod>
+    + AlgebraWithInvolution<K, Add, Mul, Act, Prod, Inv>
+    + QuadraticForm<K, Nm, Add, Mul, Act> where
+    K: Field<Add, Mul>,
 {
 }
