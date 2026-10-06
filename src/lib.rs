@@ -39,6 +39,7 @@
 //!
 //! Ring ⊂ CommutativeRing ⊂ Field        (mit zwei Verknüpfungen: Add, Mul)
 //! Module ⊂ VectorSpace;  Algebra ⊂ UnitalAlgebra ⊂ DivisionAlgebra ⊂ CompositionAlgebra
+//! Algebra ⊂ LieAlgebra                  (nicht assoziativ: [x, y], alternierend, Jacobi)
 //! ```
 //!
 //! Zahlenartige Traits (`Number`, `Integer`, `Float`, …) stehen getrennt im Modul [`numeric`].
@@ -70,6 +71,10 @@ pub struct Conjugation;
 /// Etikett für die Norm-Form `N(x) = x ∘ x*`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Norm;
+
+/// Etikett für die Lie-Klammer `[x, y]`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct Bracket;
 
 // --- Partielle Seite: die Verknüpfung gilt nicht für jedes Paar ---
 
@@ -454,5 +459,37 @@ pub trait CompositionAlgebra<
     + AlgebraWithInvolution<K, Add, Mul, Act, Prod, Inv>
     + QuadraticForm<K, Nm, Add, Mul, Act> where
     K: Field<Add, Mul>,
+{
+}
+
+// --- Lie-Algebren ---
+
+/// Antikommutativ bezüglich `Op`: `x ∘ y = −(y ∘ x)`, wobei das Negative bezüglich `Add` gebildet wird.
+pub trait Anticommutative<Op, Add = Additive>: Magma<Op> + Group<Add> {}
+
+/// Alternierend bezüglich `Op`: `x ∘ x = 0` (das Nullelement von `Add`).
+///
+/// Daraus folgt aus der Bilinearität die Antikommutativität.
+pub trait Alternating<Op, Add = Additive>: Anticommutative<Op, Add> + UnitalMagma<Add> {}
+
+/// Jacobi-Identität für `Op`: `x ∘ (y ∘ z) + y ∘ (z ∘ x) + z ∘ (x ∘ y) = 0`.
+///
+/// Sie ersetzt die Assoziativität und sagt, dass `Op` „fast“ assoziativ ist.
+pub trait Jacobi<Op, Add = Additive>: Magma<Op> + UnitalMagma<Add> {}
+
+/// Lie-Algebra über dem kommutativen Ring `R`: eine Algebra, deren Produkt `Br` (die Lie-Klammer
+/// `[x, y]`) alternierend ist und die Jacobi-Identität erfüllt. Sie ist in der Regel nicht
+/// assoziativ und hat kein Einselement.
+///
+/// Beispiele: Vektoren im ℝ³ mit dem Kreuzprodukt, Matrizen mit dem Kommutator `[A, B] = AB − BA`
+/// und in der Quantenmechanik die Drehimpuls-Operatoren mit `[Lx, Ly] = iħ Lz`.
+pub trait LieAlgebra<
+    R,
+    Add = Additive,
+    Mul = Multiplicative,
+    Act = ScalarMultiplication,
+    Br = Bracket,
+>: Algebra<R, Add, Mul, Act, Br> + Alternating<Br, Add> + Jacobi<Br, Add> where
+    R: CommutativeRing<Add, Mul>,
 {
 }

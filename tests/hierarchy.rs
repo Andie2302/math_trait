@@ -77,3 +77,25 @@ fn star_ring<T: StarRing>() {
 
 #[test]
 fn hierarchy_compiles() {}
+
+// Lie-Algebren
+fn alternating<T: Alternating<Op, A>, Op, A>() {
+    fn need<U: Anticommutative<Op2, A2> + UnitalMagma<A2>, Op2, A2>() {}
+    need::<T, Op, A>();
+}
+fn anticommutative<T: Anticommutative<Op, A>, Op, A>() {
+    fn need<U: Magma<Op2> + Group<A2>, Op2, A2>() {}
+    need::<T, Op, A>();
+}
+fn lie_algebra<L: LieAlgebra<R>, R: CommutativeRing>() {
+    fn need<
+        U: Algebra<R2, Additive, Multiplicative, ScalarMultiplication, Bracket>
+            + Alternating<Bracket>
+            + Jacobi<Bracket>
+            + Anticommutative<Bracket>
+            + Module<R2>,
+        R2: CommutativeRing,
+    >() {
+    }
+    need::<L, R>();
+}

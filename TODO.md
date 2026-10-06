@@ -4,7 +4,8 @@ Offene Themen und Ideen, grob nach Priorität.
 
 ## Geplant
 
-- **Lie-Algebren**: Algebra mit bilinearer, alternierender Klammer `[x, y]`, die die Jacobi-Identität erfüllt (`[x,[y,z]] + [y,[z,x]] + [z,[x,y]] = 0`). Baut auf `Algebra` und `Bilinear` auf, ist aber in der Regel *nicht* assoziativ. Richtung Quantenphysik (Drehimpuls, Symmetriegruppen, Lie-Gruppen).
+- **Kommutator-Konstruktion**: Jede assoziative Algebra wird mit `[x, y] = xy − yx` zur Lie-Algebra (so entstehen die Matrix-Lie-Algebren und die Drehimpuls-Operatoren der Quantenmechanik). Als Wrapper-Typ `Commutator<A>` denkbar.
+- **Weiter bei Lie-Algebren**: Ideale, Darstellungen (adjungierte Darstellung), Killing-Form (eine `BilinearForm`), einhüllende Algebra, Lie-Gruppen.
 - **Clifford-Algebren**: Algebra, die von einer quadratischen Form erzeugt wird (`v∘v = Q(v)`). Baut auf `QuadraticForm` auf.
 - **Tensorrechnung**: Tensorprodukt von Moduln/Algebren.
 
