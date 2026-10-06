@@ -41,6 +41,7 @@
 //! Module ⊂ VectorSpace;  Algebra ⊂ UnitalAlgebra ⊂ DivisionAlgebra ⊂ CompositionAlgebra
 //! Algebra ⊂ LieAlgebra                  (nicht assoziativ: [x, y], alternierend, Jacobi)
 //! CayleyDickson<A, R>                  (verdoppelt eine Algebra mit Involution: ℝ → ℂ → ℍ → 𝕆 → 𝕊 …)
+//! Units<K>                             (die Einheitengruppe K×: Elemente ≠ 0 eines Schiefkörpers)
 //! Commutator<A, R>                      (jede assoziative Algebra A wird mit [x,y] = xy − yx eine LieAlgebra)
 //! ```
 //!
@@ -63,9 +64,11 @@ mod cayley_dickson;
 mod commutator;
 mod macros;
 pub mod numeric;
+mod units;
 
 pub use cayley_dickson::{CayleyDickson, Gamma, MinusOne};
 pub use commutator::Commutator;
+pub use units::Units;
 
 // --- Etiketten für Verknüpfungen ---
 
@@ -305,6 +308,17 @@ pub trait CommutativeRing<Add = Additive, Mul = Multiplicative>:
 pub trait DivisionRing<Add = Additive, Mul = Multiplicative>: Ring<Add, Mul> {
     /// Der Kehrwert bezüglich `Mul`: `Some(x⁻¹)`, und `None` genau für das Nullelement.
     fn recip(&self) -> Option<Self>;
+
+    /// Division von rechts: `self ⋅ rhs⁻¹`. `None`, wenn `rhs` das Nullelement ist.
+    fn div(&self, rhs: &Self) -> Option<Self> {
+        rhs.recip().map(|r| <Self as Magma<Mul>>::op(self, &r))
+    }
+
+    /// Division von links: `rhs⁻¹ ⋅ self`. `None`, wenn `rhs` das Nullelement ist.
+    /// Im Körper gleich [`div`](DivisionRing::div).
+    fn div_left(&self, rhs: &Self) -> Option<Self> {
+        rhs.recip().map(|r| <Self as Magma<Mul>>::op(&r, self))
+    }
 }
 
 /// Körper: kommutativer Schiefkörper.
