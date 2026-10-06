@@ -152,6 +152,6 @@ fn representation<V: LieModule<L, R>, L: LieAlgebra<R>, R: CommutativeRing>() {
     need::<V, R>();
 }
 fn adjoint<L: LieAlgebra<R>, R: CommutativeRing>() {
-    fn need<U: LieModule<U, R2>, R2: CommutativeRing>() {}
+    fn need<U: LieAlgebra<R2> + LieModule<U, R2>, R2: CommutativeRing>() {}
     need::<L, R>();
 }
