@@ -19,5 +19,8 @@ pub trait Group: Monoid + Loop {}
 /// Magma, dessen Verknüpfung kommutativ ist: `a ∘ b = b ∘ a`.
 pub trait Commutative: Magma {}
 
+/// Monoid mit kommutativer Verknüpfung.
+pub trait CommutativeMonoid: Monoid + Commutative {}
+
 /// Gruppe mit kommutativer Verknüpfung.
 pub trait AbelianGroup: Group + Commutative {}
