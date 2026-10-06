@@ -42,12 +42,21 @@
 //! Algebra ⊂ LieAlgebra                  (nicht assoziativ: [x, y], alternierend, Jacobi)
 //! ```
 //!
-//! Zahlenartige Traits (`Number`, `Integer`, `Float`, …) stehen getrennt im Modul [`numeric`].
+//! Zum Implementieren gibt es Makros (`impl_group!`, `impl_field!`, `impl_lie_algebra!`, …),
+//! siehe das Modul `macros` im Quelltext. Zahlenartige Traits (`Number`, `Integer`, `Float`, …) stehen getrennt im Modul [`numeric`].
+//!
+//! ## Implementieren mit Makros
+//!
+//! Eine Gruppe verlangt 15 Impls, eine Lie-Algebra weit mehr. Die Makros `impl_magma!`,
+//! `impl_semigroup!`, `impl_monoid!`, `impl_group!`, `impl_abelian_group!`, `impl_ring!`,
+//! `impl_field!`, `impl_module!`, `impl_algebra!` und `impl_lie_algebra!` erzeugen sie aus
+//! kurzen Rümpfen. Die Gesetze prüfen sie nicht: Wer ein Makro benutzt, behauptet sie.
 
 #![no_std]
 #![forbid(unsafe_code)]
 #![warn(missing_docs)]
 
+mod macros;
 pub mod numeric;
 
 // --- Etiketten für Verknüpfungen ---

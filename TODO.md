@@ -13,8 +13,8 @@ Offene Themen und Ideen, grob nach Priorität.
 
 - **Partielle Seite ohne Methoden**: `PartialMagma` und Verwandte brauchen `Option<Self>` als Ergebnis, das passt nicht in die Supertrait-Kette von `Magma`.
 - **Heterogenes `Bilinear`** hat noch keine Methode (die homogene Fassung ist `Magma::op`).
-- **Implementier-Aufwand**: Eine `Group` verlangt rund 25 Marker-Impls. Dafür werden Makros (`impl_group!` o. Ä.) gebraucht; im Test steht ein Vorläufer (`markers!`).
-- **Redundanz bei `Group`**: `ldiv`, `rdiv` und `inverse` bestimmen sich gegenseitig, müssen aber alle geschrieben werden.
+- **Kein Kehrwert im Körper**: `DivisionRing`/`Field` haben keine Methode für das multiplikative Inverse (die Null hat keines, also passt `Group<Mul>` nicht). Denkbar: `fn recip(&self) -> Option<Self>`.
+- **Makros für weitere Strukturen**: `impl_module!`/`impl_algebra!` kennen nur die Standard-Etiketten; es fehlen Varianten für `UnitalAlgebra`, `AssociativeAlgebra`, `DivisionAlgebra`, `CompositionAlgebra`, Quasigruppen, Loops, `StarRing`.
 - **Analytische Norm** (`‖x‖ ≥ 0`, Dreiecksungleichung): braucht geordnete Körper bzw. Beträge. Bisher gibt es nur die algebraische Norm-Form (`CompositionAlgebra`).
 - **Rechtswirkung / Bimoduln**: bisher nur `LeftAction`. Nötig für Moduln über nicht-kommutativen Ringen.
 - **Getrennte Etiketten für Skalare und Vektoren** in `Module`: aktuell teilen sie sich `Add`/`Mul`.

@@ -15,51 +15,21 @@ struct Concat;
 #[derive(Debug, Clone, PartialEq)]
 struct Text(String);
 
-impl Magma<Concat> for Text {
-    fn op(&self, rhs: &Self) -> Self {
-        Text(format!("{}{}", self.0, rhs.0))
-    }
-}
-impl UnitalMagma<Concat> for Text {
-    fn identity() -> Self {
-        Text(String::new())
-    }
-}
-markers!(Text, Concat: PartialMagma, Semigroupoid, UnitalPartialMagma, SmallCategory,
-    Alternative, Flexible, PowerAssociative, Semigroup, Monoid);
+impl_monoid!(Text, Concat;
+    op(a, b) { Text(format!("{}{}", a.0, b.0)) }
+    identity() { Text(String::new()) }
+);
 
 // --- Beispiel 2: ℤ/5 unter Addition (abelsche Gruppe) -----------------------
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 struct Z5(u8);
 
-impl Magma<Additive> for Z5 {
-    fn op(&self, rhs: &Self) -> Self {
-        Z5((self.0 + rhs.0) % 5)
-    }
-}
-impl UnitalMagma<Additive> for Z5 {
-    fn identity() -> Self {
-        Z5(0)
-    }
-}
-impl Quasigroup<Additive> for Z5 {
-    fn ldiv(&self, b: &Self) -> Self {
-        Z5((b.0 + 5 - self.0) % 5)
-    }
-    fn rdiv(&self, b: &Self) -> Self {
-        Z5((b.0 + 5 - self.0) % 5)
-    }
-}
-impl Group<Additive> for Z5 {
-    fn inverse(&self) -> Self {
-        Z5((5 - self.0) % 5)
-    }
-}
-markers!(Z5, Additive: PartialMagma, Semigroupoid, UnitalPartialMagma, SmallCategory, Groupoid,
-    LeftCancellative, RightCancellative, Cancellative, Alternative, Flexible,
-    PowerAssociative, Semigroup, Monoid, Loop, AssociativeQuasigroup, Commutative,
-    Trimedial, Medial, CommutativeSemigroup, CommutativeMonoid, AbelianGroup);
+impl_abelian_group!(Z5, Additive;
+    op(a, b) { Z5((a.0 + b.0) % 5) }
+    identity() { Z5(0) }
+    inverse(a) { Z5((5 - a.0) % 5) }
+);
 
 // --- generische Rechnungen ---------------------------------------------------
 
