@@ -13,6 +13,7 @@ impl_field!(Z5, Additive, Multiplicative;
     neg(a) { Z5((5 - a.0) % 5) }
     mul(a, b) { Z5((a.0 * b.0) % 5) }
     one() { Z5(1) }
+    recip(a) { [None, Some(Z5(1)), Some(Z5(3)), Some(Z5(2)), Some(Z5(4))][a.0 as usize] }
 );
 
 fn add(a: Z5, b: Z5) -> Z5 {
@@ -114,4 +115,15 @@ fn scalar_action_and_group_division() {
     // ldiv ist aus op und inverse abgeleitet: v + x = w  =>  x = -v + w
     let x = <V3 as Quasigroup<Additive>>::ldiv(&v, &w);
     assert_eq!(<V3 as Magma<Additive>>::op(&v, &x), w);
+}
+
+#[test]
+fn reciprocal_exists_exactly_for_nonzero() {
+    assert_eq!(<Z5 as DivisionRing>::recip(&Z5(0)), None);
+    for a in 1..5 {
+        let a = Z5(a);
+        let r = <Z5 as DivisionRing>::recip(&a).expect("nonzero has reciprocal");
+        assert_eq!(mul(a, r), Z5(1));
+        assert_eq!(mul(r, a), Z5(1));
+    }
 }

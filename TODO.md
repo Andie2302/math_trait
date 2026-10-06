@@ -13,7 +13,8 @@ Offene Themen und Ideen, grob nach Priorität.
 
 - **Partielle Seite ohne Methoden**: `PartialMagma` und Verwandte brauchen `Option<Self>` als Ergebnis, das passt nicht in die Supertrait-Kette von `Magma`.
 - **Heterogenes `Bilinear`** hat noch keine Methode (die homogene Fassung ist `Magma::op`).
-- **Kein Kehrwert im Körper**: `DivisionRing`/`Field` haben keine Methode für das multiplikative Inverse (die Null hat keines, also passt `Group<Mul>` nicht). Denkbar: `fn recip(&self) -> Option<Self>`.
+- **Kehrwert als Typ**: `recip` liefert `Option`. Eleganter wäre ein Typ `NonZero<K>`, der `Group<Multiplicative>` erfüllt (die Einheitengruppe `K×`).
+- **Division**: `a / b = a ⋅ b⁻¹` (und im Schiefkörper `b⁻¹ ⋅ a`) als abgeleitete Methoden.
 - **Makros für weitere Strukturen**: `impl_module!`/`impl_algebra!` kennen nur die Standard-Etiketten; es fehlen Varianten für `UnitalAlgebra`, `AssociativeAlgebra`, `DivisionAlgebra`, `CompositionAlgebra`, Quasigruppen, Loops, `StarRing`.
 - **Analytische Norm** (`‖x‖ ≥ 0`, Dreiecksungleichung): braucht geordnete Körper bzw. Beträge. Bisher gibt es nur die algebraische Norm-Form (`CompositionAlgebra`).
 - **Rechtswirkung / Bimoduln**: bisher nur `LeftAction`. Nötig für Moduln über nicht-kommutativen Ringen.

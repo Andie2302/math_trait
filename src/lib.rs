@@ -271,7 +271,10 @@ pub trait CommutativeRing<Add = Additive, Mul = Multiplicative>:
 }
 
 /// Schiefkörper: Ring, in dem jedes Element außer dem Nullelement bezüglich `Mul` ein Inverses hat (z. B. die Quaternionen).
-pub trait DivisionRing<Add = Additive, Mul = Multiplicative>: Ring<Add, Mul> {}
+pub trait DivisionRing<Add = Additive, Mul = Multiplicative>: Ring<Add, Mul> {
+    /// Der Kehrwert bezüglich `Mul`: `Some(x⁻¹)`, und `None` genau für das Nullelement.
+    fn recip(&self) -> Option<Self>;
+}
 
 /// Körper: kommutativer Schiefkörper.
 pub trait Field<Add = Additive, Mul = Multiplicative>:
@@ -412,6 +415,8 @@ pub trait DivisionAlgebra<
 >: UnitalAlgebra<R, Add, Mul, Act, Prod> where
     R: CommutativeRing<Add, Mul>,
 {
+    /// Der Kehrwert bezüglich `Prod`: `Some(x⁻¹)`, und `None` genau für den Nullvektor.
+    fn recip(&self) -> Option<Self>;
 }
 
 // --- Involution ---

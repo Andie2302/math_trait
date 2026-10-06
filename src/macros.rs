@@ -230,6 +230,19 @@ macro_rules! __ring_markers {
     };
 }
 
+#[doc(hidden)]
+#[macro_export]
+macro_rules! __impl_recip {
+    ($t:ty, $add:ty, $mul:ty, $r:ident, $body:block) => {
+        impl $crate::DivisionRing<$add, $mul> for $t {
+            fn recip(&self) -> Option<Self> {
+                let $r = self;
+                $body
+            }
+        }
+    };
+}
+
 /// Ring: abelsche Gruppe `add`, Monoid `mul`, Distributivgesetz.
 ///
 /// ```
@@ -268,18 +281,22 @@ macro_rules! impl_commutative_ring {
 }
 
 /// Schiefkörper: Ring, in dem jedes Element außer `zero` ein Inverses bezüglich `mul` hat.
+///
+/// `recip` liefert `Some(Kehrwert)`, und `None` genau für `zero`.
 #[macro_export]
 macro_rules! impl_division_ring {
     ($t:ty, $add:ty, $mul:ty;
         add($a:ident, $b:ident) $addb:block zero() $zero:block neg($n:ident) $negb:block
-        mul($c:ident, $d:ident) $mulb:block one() $one:block) => {
+        mul($c:ident, $d:ident) $mulb:block one() $one:block recip($r:ident) $recip:block) => {
         $crate::impl_ring!($t, $add, $mul;
             add($a, $b) $addb zero() $zero neg($n) $negb mul($c, $d) $mulb one() $one);
-        impl $crate::DivisionRing<$add, $mul> for $t {}
+        $crate::__impl_recip!($t, $add, $mul, $r, $recip);
     };
 }
 
 /// Körper: kommutativer Schiefkörper.
+///
+/// `recip` liefert `Some(Kehrwert)`, und `None` genau für `zero`.
 ///
 /// ```
 /// use math_trait::{impl_field, Additive, Multiplicative, Field};
@@ -290,6 +307,7 @@ macro_rules! impl_division_ring {
 ///     neg(a) { Z5((5 - a.0) % 5) }
 ///     mul(a, b) { Z5((a.0 * b.0) % 5) }
 ///     one() { Z5(1) }
+///     recip(a) { match a.0 { 1 => Some(Z5(1)), 2 => Some(Z5(3)), 3 => Some(Z5(2)), 4 => Some(Z5(4)), _ => None } }
 /// );
 /// fn takes_field<K: Field>() {}
 /// takes_field::<Z5>();
@@ -298,10 +316,10 @@ macro_rules! impl_division_ring {
 macro_rules! impl_field {
     ($t:ty, $add:ty, $mul:ty;
         add($a:ident, $b:ident) $addb:block zero() $zero:block neg($n:ident) $negb:block
-        mul($c:ident, $d:ident) $mulb:block one() $one:block) => {
+        mul($c:ident, $d:ident) $mulb:block one() $one:block recip($r:ident) $recip:block) => {
         $crate::impl_commutative_ring!($t, $add, $mul;
             add($a, $b) $addb zero() $zero neg($n) $negb mul($c, $d) $mulb one() $one);
-        impl $crate::DivisionRing<$add, $mul> for $t {}
+        $crate::__impl_recip!($t, $add, $mul, $r, $recip);
         impl $crate::Field<$add, $mul> for $t {}
     };
 }
