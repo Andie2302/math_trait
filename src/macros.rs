@@ -4,22 +4,42 @@
 //! erzeugen sie und die Methoden aus kurzen Rümpfen. Die *Gesetze* (Assoziativität, Inverse, …)
 //! prüft kein Makro: Wer ein Makro verwendet, behauptet, dass sie gelten.
 //!
-//! Die Makros sind nach Strukturen gestaffelt und schließen sich gegenseitig aus: Für einen Typ
-//! und ein Etikett nimmt man genau **ein** Makro der Reihe `magma` → `semigroup` → `monoid` →
-//! `group`, in der kommutativen Variante `commutative_…` bzw. `abelian_group`.
+//! # Reihen
+//!
+//! Für einen Typ und ein Etikett nimmt man genau **ein** Makro der Reihe `magma` → `semigroup` →
+//! `monoid` → `group`, in der kommutativen Variante `commutative_…` bzw. `abelian_group`. Daneben
+//! gibt es `unital_magma` (Magma mit Eins, ohne Assoziativität).
+//!
+//! Bei Algebren gilt ein anderes Muster: `impl_algebra!` ist die Basis, danach kommen
+//! Zusatz-Makros, die jeweils nur *ein* Marker-Trait hinzufügen (`impl_unital_algebra!`,
+//! `impl_associative_algebra!`, `impl_alternative_algebra!`, `impl_division_algebra!`).
+//!
+//! # Generische Typen
+//!
+//! Jedes Makro nimmt optional eine Liste von Typparametern mit Bedingungen vorweg:
+//!
+//! ```text
+//! impl_abelian_group!(for [T: AbelianGroup<Additive>] Pair<T>, Additive; op(a, b) { … } … );
+//! ```
+//!
+//! Die Liste steht in `[ ]` und enthält genau das, was in `impl<…>` stehen würde.
 
 /// Implementiert eine Liste von Marker-Traits für einen Typ und ein Etikett.
 #[doc(hidden)]
 #[macro_export]
 macro_rules! __markers {
-    ($t:ty, $op:ty: $($tr:ident),* $(,)?) => { $( impl $crate::$tr<$op> for $t {} )* };
+    ([$($g:tt)*] $t:ty, $op:ty:) => {};
+    ([$($g:tt)*] $t:ty, $op:ty: $tr:ident $(, $rest:ident)* $(,)?) => {
+        impl<$($g)*> $crate::$tr<$op> for $t {}
+        $crate::__markers!([$($g)*] $t, $op: $($rest),*);
+    };
 }
 
 #[doc(hidden)]
 #[macro_export]
 macro_rules! __impl_op {
-    ($t:ty, $op:ty, $a:ident, $b:ident, $body:block) => {
-        impl $crate::Magma<$op> for $t {
+    ([$($g:tt)*] $t:ty, $op:ty, $a:ident, $b:ident, $body:block) => {
+        impl<$($g)*> $crate::Magma<$op> for $t {
             fn op(&self, rhs: &Self) -> Self {
                 let $a = self;
                 let $b = rhs;
@@ -32,8 +52,8 @@ macro_rules! __impl_op {
 #[doc(hidden)]
 #[macro_export]
 macro_rules! __impl_identity {
-    ($t:ty, $op:ty, $body:block) => {
-        impl $crate::UnitalMagma<$op> for $t {
+    ([$($g:tt)*] $t:ty, $op:ty, $body:block) => {
+        impl<$($g)*> $crate::UnitalMagma<$op> for $t {
             fn identity() -> Self $body
         }
     };
@@ -42,8 +62,8 @@ macro_rules! __impl_identity {
 #[doc(hidden)]
 #[macro_export]
 macro_rules! __impl_group_methods {
-    ($t:ty, $op:ty, $x:ident, $body:block) => {
-        impl $crate::Quasigroup<$op> for $t {
+    ([$($g:tt)*] $t:ty, $op:ty, $x:ident, $body:block) => {
+        impl<$($g)*> $crate::Quasigroup<$op> for $t {
             fn ldiv(&self, b: &Self) -> Self {
                 <$t as $crate::Magma<$op>>::op(&<$t as $crate::Group<$op>>::inverse(self), b)
             }
@@ -51,7 +71,7 @@ macro_rules! __impl_group_methods {
                 <$t as $crate::Magma<$op>>::op(b, &<$t as $crate::Group<$op>>::inverse(self))
             }
         }
-        impl $crate::Group<$op> for $t {
+        impl<$($g)*> $crate::Group<$op> for $t {
             fn inverse(&self) -> Self {
                 let $x = self;
                 $body
@@ -63,30 +83,30 @@ macro_rules! __impl_group_methods {
 #[doc(hidden)]
 #[macro_export]
 macro_rules! __semigroup_markers {
-    ($t:ty, $op:ty) => {
-        $crate::__markers!($t, $op: PartialMagma, Semigroupoid, Alternative, Flexible,
+    ($g:tt $t:ty, $op:ty) => {
+        $crate::__markers!($g $t, $op: PartialMagma, Semigroupoid, Alternative, Flexible,
             PowerAssociative, Semigroup);
     };
 }
 #[doc(hidden)]
 #[macro_export]
 macro_rules! __commutative_markers {
-    ($t:ty, $op:ty) => {
-        $crate::__markers!($t, $op: Commutative, Trimedial, Medial, CommutativeSemigroup);
+    ($g:tt $t:ty, $op:ty) => {
+        $crate::__markers!($g $t, $op: Commutative, Trimedial, Medial, CommutativeSemigroup);
     };
 }
 #[doc(hidden)]
 #[macro_export]
 macro_rules! __monoid_markers {
-    ($t:ty, $op:ty) => {
-        $crate::__markers!($t, $op: UnitalPartialMagma, SmallCategory, Monoid);
+    ($g:tt $t:ty, $op:ty) => {
+        $crate::__markers!($g $t, $op: UnitalPartialMagma, SmallCategory, Monoid);
     };
 }
 #[doc(hidden)]
 #[macro_export]
 macro_rules! __group_markers {
-    ($t:ty, $op:ty) => {
-        $crate::__markers!($t, $op: LeftCancellative, RightCancellative, Cancellative,
+    ($g:tt $t:ty, $op:ty) => {
+        $crate::__markers!($g $t, $op: LeftCancellative, RightCancellative, Cancellative,
             Groupoid, Loop, AssociativeQuasigroup);
     };
 }
@@ -102,37 +122,62 @@ macro_rules! __group_markers {
 /// ```
 #[macro_export]
 macro_rules! impl_magma {
+    (for [$($g:tt)*] $t:ty, $op:ty; op($a:ident, $b:ident) $body:block) => {
+        $crate::__markers!([$($g)*] $t, $op: PartialMagma);
+        $crate::__impl_op!([$($g)*] $t, $op, $a, $b, $body);
+    };
     ($t:ty, $op:ty; op($a:ident, $b:ident) $body:block) => {
-        $crate::__markers!($t, $op: PartialMagma);
-        $crate::__impl_op!($t, $op, $a, $b, $body);
+        $crate::impl_magma!(for [] $t, $op; op($a, $b) $body);
     };
 }
 
 /// Kommutatives Magma: `op` ist kommutativ.
 #[macro_export]
 macro_rules! impl_commutative_magma {
+    (for [$($g:tt)*] $t:ty, $op:ty; op($a:ident, $b:ident) $body:block) => {
+        $crate::__markers!([$($g)*] $t, $op: PartialMagma, Commutative, Flexible);
+        $crate::__impl_op!([$($g)*] $t, $op, $a, $b, $body);
+    };
     ($t:ty, $op:ty; op($a:ident, $b:ident) $body:block) => {
-        $crate::__markers!($t, $op: PartialMagma, Commutative, Flexible);
-        $crate::__impl_op!($t, $op, $a, $b, $body);
+        $crate::impl_commutative_magma!(for [] $t, $op; op($a, $b) $body);
+    };
+}
+
+/// Magma mit neutralem Element `identity`, ohne Assoziativität.
+#[macro_export]
+macro_rules! impl_unital_magma {
+    (for [$($g:tt)*] $t:ty, $op:ty; op($a:ident, $b:ident) $body:block identity() $id:block) => {
+        $crate::__markers!([$($g)*] $t, $op: PartialMagma, UnitalPartialMagma);
+        $crate::__impl_op!([$($g)*] $t, $op, $a, $b, $body);
+        $crate::__impl_identity!([$($g)*] $t, $op, $id);
+    };
+    ($t:ty, $op:ty; op($a:ident, $b:ident) $body:block identity() $id:block) => {
+        $crate::impl_unital_magma!(for [] $t, $op; op($a, $b) $body identity() $id);
     };
 }
 
 /// Halbgruppe: `op` ist assoziativ.
 #[macro_export]
 macro_rules! impl_semigroup {
+    (for [$($g:tt)*] $t:ty, $op:ty; op($a:ident, $b:ident) $body:block) => {
+        $crate::__semigroup_markers!([$($g)*] $t, $op);
+        $crate::__impl_op!([$($g)*] $t, $op, $a, $b, $body);
+    };
     ($t:ty, $op:ty; op($a:ident, $b:ident) $body:block) => {
-        $crate::__semigroup_markers!($t, $op);
-        $crate::__impl_op!($t, $op, $a, $b, $body);
+        $crate::impl_semigroup!(for [] $t, $op; op($a, $b) $body);
     };
 }
 
 /// Kommutative Halbgruppe.
 #[macro_export]
 macro_rules! impl_commutative_semigroup {
+    (for [$($g:tt)*] $t:ty, $op:ty; op($a:ident, $b:ident) $body:block) => {
+        $crate::__semigroup_markers!([$($g)*] $t, $op);
+        $crate::__commutative_markers!([$($g)*] $t, $op);
+        $crate::__impl_op!([$($g)*] $t, $op, $a, $b, $body);
+    };
     ($t:ty, $op:ty; op($a:ident, $b:ident) $body:block) => {
-        $crate::__semigroup_markers!($t, $op);
-        $crate::__commutative_markers!($t, $op);
-        $crate::__impl_op!($t, $op, $a, $b, $body);
+        $crate::impl_commutative_semigroup!(for [] $t, $op; op($a, $b) $body);
     };
 }
 
@@ -154,24 +199,30 @@ macro_rules! impl_commutative_semigroup {
 /// ```
 #[macro_export]
 macro_rules! impl_monoid {
+    (for [$($g:tt)*] $t:ty, $op:ty; op($a:ident, $b:ident) $body:block identity() $id:block) => {
+        $crate::__semigroup_markers!([$($g)*] $t, $op);
+        $crate::__monoid_markers!([$($g)*] $t, $op);
+        $crate::__impl_op!([$($g)*] $t, $op, $a, $b, $body);
+        $crate::__impl_identity!([$($g)*] $t, $op, $id);
+    };
     ($t:ty, $op:ty; op($a:ident, $b:ident) $body:block identity() $id:block) => {
-        $crate::__semigroup_markers!($t, $op);
-        $crate::__monoid_markers!($t, $op);
-        $crate::__impl_op!($t, $op, $a, $b, $body);
-        $crate::__impl_identity!($t, $op, $id);
+        $crate::impl_monoid!(for [] $t, $op; op($a, $b) $body identity() $id);
     };
 }
 
 /// Kommutatives Monoid.
 #[macro_export]
 macro_rules! impl_commutative_monoid {
+    (for [$($g:tt)*] $t:ty, $op:ty; op($a:ident, $b:ident) $body:block identity() $id:block) => {
+        $crate::__semigroup_markers!([$($g)*] $t, $op);
+        $crate::__commutative_markers!([$($g)*] $t, $op);
+        $crate::__monoid_markers!([$($g)*] $t, $op);
+        $crate::__markers!([$($g)*] $t, $op: CommutativeMonoid);
+        $crate::__impl_op!([$($g)*] $t, $op, $a, $b, $body);
+        $crate::__impl_identity!([$($g)*] $t, $op, $id);
+    };
     ($t:ty, $op:ty; op($a:ident, $b:ident) $body:block identity() $id:block) => {
-        $crate::__semigroup_markers!($t, $op);
-        $crate::__commutative_markers!($t, $op);
-        $crate::__monoid_markers!($t, $op);
-        $crate::__markers!($t, $op: CommutativeMonoid);
-        $crate::__impl_op!($t, $op, $a, $b, $body);
-        $crate::__impl_identity!($t, $op, $id);
+        $crate::impl_commutative_monoid!(for [] $t, $op; op($a, $b) $body identity() $id);
     };
 }
 
@@ -191,50 +242,82 @@ macro_rules! impl_commutative_monoid {
 /// ```
 #[macro_export]
 macro_rules! impl_group {
+    (for [$($g:tt)*] $t:ty, $op:ty; op($a:ident, $b:ident) $body:block identity() $id:block
+        inverse($x:ident) $inv:block) => {
+        $crate::__semigroup_markers!([$($g)*] $t, $op);
+        $crate::__monoid_markers!([$($g)*] $t, $op);
+        $crate::__group_markers!([$($g)*] $t, $op);
+        $crate::__impl_op!([$($g)*] $t, $op, $a, $b, $body);
+        $crate::__impl_identity!([$($g)*] $t, $op, $id);
+        $crate::__impl_group_methods!([$($g)*] $t, $op, $x, $inv);
+    };
     ($t:ty, $op:ty; op($a:ident, $b:ident) $body:block identity() $id:block
         inverse($x:ident) $inv:block) => {
-        $crate::__semigroup_markers!($t, $op);
-        $crate::__monoid_markers!($t, $op);
-        $crate::__group_markers!($t, $op);
-        $crate::__impl_op!($t, $op, $a, $b, $body);
-        $crate::__impl_identity!($t, $op, $id);
-        $crate::__impl_group_methods!($t, $op, $x, $inv);
+        $crate::impl_group!(for [] $t, $op; op($a, $b) $body identity() $id inverse($x) $inv);
     };
 }
 
 /// Abelsche Gruppe: kommutative Gruppe.
+///
+/// Mit Generics, hier das direkte Produkt `T × T`:
+///
+/// ```
+/// use math_trait::{impl_abelian_group, AbelianGroup, Additive, Group, Magma, UnitalMagma};
+/// struct Pair<T>(T, T);
+/// # struct Z5(u8);
+/// # math_trait::impl_abelian_group!(Z5, Additive;
+/// #     op(a, b) { Z5((a.0 + b.0) % 5) } identity() { Z5(0) } inverse(a) { Z5((5 - a.0) % 5) });
+/// impl_abelian_group!(for [T: AbelianGroup<Additive>] Pair<T>, Additive;
+///     op(a, b) { Pair(
+///         <T as Magma<Additive>>::op(&a.0, &b.0),
+///         <T as Magma<Additive>>::op(&a.1, &b.1)) }
+///     identity() { Pair(
+///         <T as UnitalMagma<Additive>>::identity(),
+///         <T as UnitalMagma<Additive>>::identity()) }
+///     inverse(a) { Pair(
+///         <T as Group<Additive>>::inverse(&a.0),
+///         <T as Group<Additive>>::inverse(&a.1)) }
+/// );
+/// fn takes<G: AbelianGroup<Additive>>() {}
+/// takes::<Pair<Z5>>();
+/// ```
 #[macro_export]
 macro_rules! impl_abelian_group {
+    (for [$($g:tt)*] $t:ty, $op:ty; op($a:ident, $b:ident) $body:block identity() $id:block
+        inverse($x:ident) $inv:block) => {
+        $crate::__semigroup_markers!([$($g)*] $t, $op);
+        $crate::__commutative_markers!([$($g)*] $t, $op);
+        $crate::__monoid_markers!([$($g)*] $t, $op);
+        $crate::__markers!([$($g)*] $t, $op: CommutativeMonoid);
+        $crate::__group_markers!([$($g)*] $t, $op);
+        $crate::__markers!([$($g)*] $t, $op: AbelianGroup);
+        $crate::__impl_op!([$($g)*] $t, $op, $a, $b, $body);
+        $crate::__impl_identity!([$($g)*] $t, $op, $id);
+        $crate::__impl_group_methods!([$($g)*] $t, $op, $x, $inv);
+    };
     ($t:ty, $op:ty; op($a:ident, $b:ident) $body:block identity() $id:block
         inverse($x:ident) $inv:block) => {
-        $crate::__semigroup_markers!($t, $op);
-        $crate::__commutative_markers!($t, $op);
-        $crate::__monoid_markers!($t, $op);
-        $crate::__markers!($t, $op: CommutativeMonoid);
-        $crate::__group_markers!($t, $op);
-        $crate::__markers!($t, $op: AbelianGroup);
-        $crate::__impl_op!($t, $op, $a, $b, $body);
-        $crate::__impl_identity!($t, $op, $id);
-        $crate::__impl_group_methods!($t, $op, $x, $inv);
+        $crate::impl_abelian_group!(for [] $t, $op; op($a, $b) $body identity() $id
+            inverse($x) $inv);
     };
 }
 
 #[doc(hidden)]
 #[macro_export]
 macro_rules! __ring_markers {
-    ($t:ty, $add:ty, $mul:ty) => {
-        impl $crate::LeftDistributive<$mul, $add> for $t {}
-        impl $crate::RightDistributive<$mul, $add> for $t {}
-        impl $crate::Distributive<$mul, $add> for $t {}
-        impl $crate::Ring<$add, $mul> for $t {}
+    ([$($g:tt)*] $t:ty, $add:ty, $mul:ty) => {
+        impl<$($g)*> $crate::LeftDistributive<$mul, $add> for $t {}
+        impl<$($g)*> $crate::RightDistributive<$mul, $add> for $t {}
+        impl<$($g)*> $crate::Distributive<$mul, $add> for $t {}
+        impl<$($g)*> $crate::Ring<$add, $mul> for $t {}
     };
 }
 
 #[doc(hidden)]
 #[macro_export]
 macro_rules! __impl_recip {
-    ($t:ty, $add:ty, $mul:ty, $r:ident, $body:block) => {
-        impl $crate::DivisionRing<$add, $mul> for $t {
+    ([$($g:tt)*] $t:ty, $add:ty, $mul:ty, $r:ident, $body:block) => {
+        impl<$($g)*> $crate::DivisionRing<$add, $mul> for $t {
             fn recip(&self) -> Option<Self> {
                 let $r = self;
                 $body
@@ -258,25 +341,40 @@ macro_rules! __impl_recip {
 /// ```
 #[macro_export]
 macro_rules! impl_ring {
+    (for [$($g:tt)*] $t:ty, $add:ty, $mul:ty;
+        add($a:ident, $b:ident) $addb:block zero() $zero:block neg($n:ident) $negb:block
+        mul($c:ident, $d:ident) $mulb:block one() $one:block) => {
+        $crate::impl_abelian_group!(for [$($g)*] $t, $add;
+            op($a, $b) $addb identity() $zero inverse($n) $negb);
+        $crate::impl_monoid!(for [$($g)*] $t, $mul; op($c, $d) $mulb identity() $one);
+        $crate::__ring_markers!([$($g)*] $t, $add, $mul);
+    };
     ($t:ty, $add:ty, $mul:ty;
         add($a:ident, $b:ident) $addb:block zero() $zero:block neg($n:ident) $negb:block
         mul($c:ident, $d:ident) $mulb:block one() $one:block) => {
-        $crate::impl_abelian_group!($t, $add; op($a, $b) $addb identity() $zero inverse($n) $negb);
-        $crate::impl_monoid!($t, $mul; op($c, $d) $mulb identity() $one);
-        $crate::__ring_markers!($t, $add, $mul);
+        $crate::impl_ring!(for [] $t, $add, $mul;
+            add($a, $b) $addb zero() $zero neg($n) $negb mul($c, $d) $mulb one() $one);
     };
 }
 
 /// Kommutativer Ring: `mul` ist kommutativ.
 #[macro_export]
 macro_rules! impl_commutative_ring {
+    (for [$($g:tt)*] $t:ty, $add:ty, $mul:ty;
+        add($a:ident, $b:ident) $addb:block zero() $zero:block neg($n:ident) $negb:block
+        mul($c:ident, $d:ident) $mulb:block one() $one:block) => {
+        $crate::impl_abelian_group!(for [$($g)*] $t, $add;
+            op($a, $b) $addb identity() $zero inverse($n) $negb);
+        $crate::impl_commutative_monoid!(for [$($g)*] $t, $mul;
+            op($c, $d) $mulb identity() $one);
+        $crate::__ring_markers!([$($g)*] $t, $add, $mul);
+        impl<$($g)*> $crate::CommutativeRing<$add, $mul> for $t {}
+    };
     ($t:ty, $add:ty, $mul:ty;
         add($a:ident, $b:ident) $addb:block zero() $zero:block neg($n:ident) $negb:block
         mul($c:ident, $d:ident) $mulb:block one() $one:block) => {
-        $crate::impl_abelian_group!($t, $add; op($a, $b) $addb identity() $zero inverse($n) $negb);
-        $crate::impl_commutative_monoid!($t, $mul; op($c, $d) $mulb identity() $one);
-        $crate::__ring_markers!($t, $add, $mul);
-        impl $crate::CommutativeRing<$add, $mul> for $t {}
+        $crate::impl_commutative_ring!(for [] $t, $add, $mul;
+            add($a, $b) $addb zero() $zero neg($n) $negb mul($c, $d) $mulb one() $one);
     };
 }
 
@@ -285,12 +383,19 @@ macro_rules! impl_commutative_ring {
 /// `recip` liefert `Some(Kehrwert)`, und `None` genau für `zero`.
 #[macro_export]
 macro_rules! impl_division_ring {
+    (for [$($g:tt)*] $t:ty, $add:ty, $mul:ty;
+        add($a:ident, $b:ident) $addb:block zero() $zero:block neg($n:ident) $negb:block
+        mul($c:ident, $d:ident) $mulb:block one() $one:block recip($r:ident) $recip:block) => {
+        $crate::impl_ring!(for [$($g)*] $t, $add, $mul;
+            add($a, $b) $addb zero() $zero neg($n) $negb mul($c, $d) $mulb one() $one);
+        $crate::__impl_recip!([$($g)*] $t, $add, $mul, $r, $recip);
+    };
     ($t:ty, $add:ty, $mul:ty;
         add($a:ident, $b:ident) $addb:block zero() $zero:block neg($n:ident) $negb:block
         mul($c:ident, $d:ident) $mulb:block one() $one:block recip($r:ident) $recip:block) => {
-        $crate::impl_ring!($t, $add, $mul;
-            add($a, $b) $addb zero() $zero neg($n) $negb mul($c, $d) $mulb one() $one);
-        $crate::__impl_recip!($t, $add, $mul, $r, $recip);
+        $crate::impl_division_ring!(for [] $t, $add, $mul;
+            add($a, $b) $addb zero() $zero neg($n) $negb mul($c, $d) $mulb one() $one
+            recip($r) $recip);
     };
 }
 
@@ -314,13 +419,20 @@ macro_rules! impl_division_ring {
 /// ```
 #[macro_export]
 macro_rules! impl_field {
+    (for [$($g:tt)*] $t:ty, $add:ty, $mul:ty;
+        add($a:ident, $b:ident) $addb:block zero() $zero:block neg($n:ident) $negb:block
+        mul($c:ident, $d:ident) $mulb:block one() $one:block recip($r:ident) $recip:block) => {
+        $crate::impl_commutative_ring!(for [$($g)*] $t, $add, $mul;
+            add($a, $b) $addb zero() $zero neg($n) $negb mul($c, $d) $mulb one() $one);
+        $crate::__impl_recip!([$($g)*] $t, $add, $mul, $r, $recip);
+        impl<$($g)*> $crate::Field<$add, $mul> for $t {}
+    };
     ($t:ty, $add:ty, $mul:ty;
         add($a:ident, $b:ident) $addb:block zero() $zero:block neg($n:ident) $negb:block
         mul($c:ident, $d:ident) $mulb:block one() $one:block recip($r:ident) $recip:block) => {
-        $crate::impl_commutative_ring!($t, $add, $mul;
-            add($a, $b) $addb zero() $zero neg($n) $negb mul($c, $d) $mulb one() $one);
-        $crate::__impl_recip!($t, $add, $mul, $r, $recip);
-        impl $crate::Field<$add, $mul> for $t {}
+        $crate::impl_field!(for [] $t, $add, $mul;
+            add($a, $b) $addb zero() $zero neg($n) $negb mul($c, $d) $mulb one() $one
+            recip($r) $recip);
     };
 }
 
@@ -328,15 +440,18 @@ macro_rules! impl_field {
 /// Gruppe bezüglich `Additive` sein, z. B. über [`impl_abelian_group!`].
 #[macro_export]
 macro_rules! impl_module {
-    ($v:ty, $r:ty; act($s:ident, $x:ident) $body:block) => {
-        impl $crate::LeftAction<$r> for $v {
+    (for [$($g:tt)*] $v:ty, $r:ty; act($s:ident, $x:ident) $body:block) => {
+        impl<$($g)*> $crate::LeftAction<$r> for $v {
             fn act(scalar: &$r, x: &Self) -> Self {
                 let $s = scalar;
                 let $x = x;
                 $body
             }
         }
-        impl $crate::Module<$r> for $v {}
+        impl<$($g)*> $crate::Module<$r> for $v {}
+    };
+    ($v:ty, $r:ty; act($s:ident, $x:ident) $body:block) => {
+        $crate::impl_module!(for [] $v, $r; act($s, $x) $body);
     };
 }
 
@@ -344,12 +459,12 @@ macro_rules! impl_module {
 /// `Magma<Prod>` implementieren (z. B. über [`impl_magma!`]).
 #[macro_export]
 macro_rules! impl_algebra {
-    ($a:ty, $r:ty, $prod:ty) => {
-        impl $crate::LeftDistributive<$prod, $crate::Additive> for $a {}
-        impl $crate::RightDistributive<$prod, $crate::Additive> for $a {}
-        impl $crate::Distributive<$prod, $crate::Additive> for $a {}
-        impl $crate::Bilinear<$a, $a, $r, $prod> for $a {}
-        impl
+    (for [$($g:tt)*] $a:ty, $r:ty, $prod:ty) => {
+        impl<$($g)*> $crate::LeftDistributive<$prod, $crate::Additive> for $a {}
+        impl<$($g)*> $crate::RightDistributive<$prod, $crate::Additive> for $a {}
+        impl<$($g)*> $crate::Distributive<$prod, $crate::Additive> for $a {}
+        impl<$($g)*> $crate::Bilinear<$a, $a, $r, $prod> for $a {}
+        impl<$($g)*>
             $crate::Algebra<
                 $r,
                 $crate::Additive,
@@ -360,18 +475,110 @@ macro_rules! impl_algebra {
         {
         }
     };
+    ($a:ty, $r:ty, $prod:ty) => {
+        $crate::impl_algebra!(for [] $a, $r, $prod);
+    };
+}
+
+/// Wie [`impl_algebra!`], aber für einen Typ, der schon über [`impl_ring!`] (oder eine
+/// Variante davon) ein Ring ist und dessen Ring-Multiplikation das Produkt der Algebra ist.
+/// Das Distributivgesetz gibt es dann schon, deshalb wird es hier nicht noch einmal erzeugt.
+///
+/// So ist z. B. ein Körper `K` eine Algebra über sich selbst oder `K × K` eine Algebra über `K`.
+#[macro_export]
+macro_rules! impl_ring_algebra {
+    (for [$($g:tt)*] $a:ty, $r:ty) => {
+        impl<$($g)*> $crate::Bilinear<$a, $a, $r, $crate::Multiplicative> for $a {}
+        impl<$($g)*>
+            $crate::Algebra<
+                $r,
+                $crate::Additive,
+                $crate::Multiplicative,
+                $crate::ScalarMultiplication,
+                $crate::Multiplicative,
+            > for $a
+        {
+        }
+    };
+    ($a:ty, $r:ty) => {
+        $crate::impl_ring_algebra!(for [] $a, $r);
+    };
+}
+
+/// Zusatz zu [`impl_algebra!`]: die Algebra hat ein Einselement bezüglich `Prod`
+/// (`UnitalMagma<Prod>` muss schon implementiert sein).
+#[macro_export]
+macro_rules! impl_unital_algebra {
+    (for [$($g:tt)*] $a:ty, $r:ty, $prod:ty) => {
+        impl<$($g)*> $crate::UnitalAlgebra<
+            $r, $crate::Additive, $crate::Multiplicative, $crate::ScalarMultiplication, $prod
+        > for $a {}
+    };
+    ($a:ty, $r:ty, $prod:ty) => {
+        $crate::impl_unital_algebra!(for [] $a, $r, $prod);
+    };
+}
+
+/// Zusatz zu [`impl_algebra!`]: das Produkt ist assoziativ (`Semigroup<Prod>` muss schon
+/// implementiert sein).
+#[macro_export]
+macro_rules! impl_associative_algebra {
+    (for [$($g:tt)*] $a:ty, $r:ty, $prod:ty) => {
+        impl<$($g)*> $crate::AssociativeAlgebra<
+            $r, $crate::Additive, $crate::Multiplicative, $crate::ScalarMultiplication, $prod
+        > for $a {}
+    };
+    ($a:ty, $r:ty, $prod:ty) => {
+        $crate::impl_associative_algebra!(for [] $a, $r, $prod);
+    };
+}
+
+/// Zusatz zu [`impl_algebra!`]: das Produkt ist alternativ (`Alternative<Prod>` muss schon
+/// implementiert sein).
+#[macro_export]
+macro_rules! impl_alternative_algebra {
+    (for [$($g:tt)*] $a:ty, $r:ty, $prod:ty) => {
+        impl<$($g)*> $crate::AlternativeAlgebra<
+            $r, $crate::Additive, $crate::Multiplicative, $crate::ScalarMultiplication, $prod
+        > for $a {}
+    };
+    ($a:ty, $r:ty, $prod:ty) => {
+        $crate::impl_alternative_algebra!(for [] $a, $r, $prod);
+    };
+}
+
+/// Zusatz zu [`impl_unital_algebra!`]: Divisionsalgebra mit `recip`, `None` genau für den
+/// Nullvektor.
+#[macro_export]
+macro_rules! impl_division_algebra {
+    (for [$($g:tt)*] $a:ty, $r:ty, $prod:ty; recip($x:ident) $body:block) => {
+        impl<$($g)*> $crate::DivisionAlgebra<
+            $r, $crate::Additive, $crate::Multiplicative, $crate::ScalarMultiplication, $prod
+        > for $a {
+            fn recip(&self) -> Option<Self> {
+                let $x = self;
+                $body
+            }
+        }
+    };
+    ($a:ty, $r:ty, $prod:ty; recip($x:ident) $body:block) => {
+        $crate::impl_division_algebra!(for [] $a, $r, $prod; recip($x) $body);
+    };
 }
 
 /// Lie-Algebra über `R`: Algebra mit dem Produkt `Bracket`, das alternierend ist und die
 /// Jacobi-Identität erfüllt. `L` muss schon ein Modul sein und `Magma<Bracket>` implementieren.
 #[macro_export]
 macro_rules! impl_lie_algebra {
+    (for [$($g:tt)*] $l:ty, $r:ty) => {
+        $crate::impl_algebra!(for [$($g)*] $l, $r, $crate::Bracket);
+        impl<$($g)*> $crate::Anticommutative<$crate::Bracket> for $l {}
+        impl<$($g)*> $crate::Alternating<$crate::Bracket> for $l {}
+        impl<$($g)*> $crate::Jacobi<$crate::Bracket> for $l {}
+        impl<$($g)*> $crate::LieAlgebra<$r> for $l {}
+    };
     ($l:ty, $r:ty) => {
-        $crate::impl_algebra!($l, $r, $crate::Bracket);
-        impl $crate::Anticommutative<$crate::Bracket> for $l {}
-        impl $crate::Alternating<$crate::Bracket> for $l {}
-        impl $crate::Jacobi<$crate::Bracket> for $l {}
-        impl $crate::LieAlgebra<$r> for $l {}
+        $crate::impl_lie_algebra!(for [] $l, $r);
     };
 }
 
@@ -388,17 +595,7 @@ macro_rules! impl_field_algebra {
             }
         }
         impl $crate::Module<$k> for $k {}
-        impl $crate::Bilinear<$k, $k, $k, $crate::Multiplicative> for $k {}
-        impl
-            $crate::Algebra<
-                $k,
-                $crate::Additive,
-                $crate::Multiplicative,
-                $crate::ScalarMultiplication,
-                $crate::Multiplicative,
-            > for $k
-        {
-        }
+        $crate::impl_ring_algebra!($k, $k);
         impl $crate::UnitalAlgebra<$k> for $k {}
         impl $crate::AssociativeAlgebra<$k> for $k {}
         impl $crate::DivisionAlgebra<$k> for $k {

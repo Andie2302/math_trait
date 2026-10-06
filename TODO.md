@@ -15,8 +15,7 @@ Offene Themen und Ideen, grob nach Priorität.
 - **Kehrwert als Typ**: `recip` liefert `Option`. Eleganter wäre ein Typ `NonZero<K>`, der `Group<Multiplicative>` erfüllt (die Einheitengruppe `K×`).
 - **Division**: `a / b = a ⋅ b⁻¹` (und im Schiefkörper `b⁻¹ ⋅ a`) als abgeleitete Methoden.
 - **Cayley-Dickson**: `CayleyDickson<A, R>` verdoppelt mit `γ = −1`. Offen: der allgemeine Parameter `γ`, `DivisionAlgebra` (braucht geordnete Körper bzw. eine anisotrope Norm) und die Bedingung "assoziativ" für Verdopplungen ohne Kompositions-Voraussetzung. Die bedingten Impls (alternativ, assoziativ, kommutativ) stützen sich auf bekannte Sätze und die Tests, der Compiler beweist sie nicht.
-- **Makros für generische Typen**: Die Makros kennen keine Typparameter und Bedingungen (`impl<A, R> … where …`). `Commutator` und `CayleyDickson` mussten deshalb von Hand implementiert werden.
-- **Makros für weitere Strukturen**: `impl_module!`/`impl_algebra!` kennen nur die Standard-Etiketten; es fehlen Varianten für `UnitalAlgebra`, `AssociativeAlgebra`, `DivisionAlgebra`, `CompositionAlgebra`, Quasigruppen, Loops, `StarRing`.
+- **Makros für weitere Strukturen**: Quasigruppen, Loops, `StarRing`, `AlgebraWithInvolution`, `CompositionAlgebra` und die bedingten Impls (wie bei `CayleyDickson`) haben noch kein Makro. Die Marker-Traits aus der Reihe der Zusätze (`impl_unital_algebra!` usw.) setzen voraus, dass die Basis schon implementiert ist.
 - **Analytische Norm** (`‖x‖ ≥ 0`, Dreiecksungleichung): braucht geordnete Körper bzw. Beträge. Bisher gibt es nur die algebraische Norm-Form (`CompositionAlgebra`).
 - **Rechtswirkung / Bimoduln**: bisher nur `LeftAction`. Nötig für Moduln über nicht-kommutativen Ringen.
 - **Getrennte Etiketten für Skalare und Vektoren** in `Module`: aktuell teilen sie sich `Add`/`Mul`.

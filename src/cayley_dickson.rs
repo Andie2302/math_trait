@@ -4,11 +4,12 @@ use core::fmt;
 use core::marker::PhantomData;
 
 use crate::{
-    Additive, Algebra, AlgebraWithInvolution, Alternative, AlternativeAlgebra, AntiAutomorphism,
-    AssociativeAlgebra, Automorphism, Bilinear, Commutative, CommutativeRing, CompositionAlgebra,
-    Conjugation, Distributive, Field, Flexible, Group, Involutive, LeftAction, LeftDistributive,
-    Magma, Module, Multiplicative, Norm, PowerAssociative, QuadraticForm, Quasigroup,
-    RightDistributive, Semigroup, Semigroupoid, TrivialInvolution, UnitalAlgebra, UnitalMagma,
+    Additive, AlgebraWithInvolution, Alternative, AlternativeAlgebra, AntiAutomorphism,
+    AssociativeAlgebra, Automorphism, Commutative, CommutativeRing, CompositionAlgebra,
+    Conjugation, Field, Flexible, Group, Involutive, LeftAction, Magma, Multiplicative, Norm,
+    PowerAssociative, QuadraticForm, Semigroup, Semigroupoid, TrivialInvolution, UnitalAlgebra,
+    UnitalMagma, impl_abelian_group, impl_algebra, impl_module, impl_unital_algebra,
+    impl_unital_magma,
 };
 
 /// Die Verdopplung der Algebra `A` über `R`: Paare `(a, b)` mit
@@ -107,166 +108,63 @@ fn conj<A: Involutive<Conjugation>>(x: &A) -> A {
     <A as Involutive<Conjugation>>::conjugate(x)
 }
 
-/// Implementiert Marker-Traits für `CayleyDickson<A, R>` unter der Grundbedingung.
-macro_rules! forward_markers {
-    ($op:ty: $($tr:ident),+ $(,)?) => {
-        $( impl<A, R> $crate::$tr<$op> for CayleyDickson<A, R>
-            where A: UnitalAlgebra<R> + AlgebraWithInvolution<R>, R: CommutativeRing {} )+
-    };
-}
+// Die Grundbedingung für alle Impls: `A` ist eine unitale Algebra mit Involution über `R`.
 
-// --- Die Addition: komponentenweise ------------------------------------------------------------
+// --- Die Addition und Skalarwirkung: komponentenweise ------------------------------------------
 
-forward_markers!(Additive: PartialMagma, Semigroupoid, Alternative, Flexible, PowerAssociative,
-    Semigroup, Commutative, Trimedial, Medial, CommutativeSemigroup, UnitalPartialMagma,
-    SmallCategory, Monoid, CommutativeMonoid, LeftCancellative, RightCancellative, Cancellative,
-    Groupoid, Loop, AssociativeQuasigroup, AbelianGroup);
-
-impl<A, R> Magma<Additive> for CayleyDickson<A, R>
-where
-    A: UnitalAlgebra<R> + AlgebraWithInvolution<R>,
-    R: CommutativeRing,
-{
-    fn op(&self, rhs: &Self) -> Self {
-        Self::new(add(&self.first, &rhs.first), add(&self.second, &rhs.second))
-    }
-}
-
-impl<A, R> UnitalMagma<Additive> for CayleyDickson<A, R>
-where
-    A: UnitalAlgebra<R> + AlgebraWithInvolution<R>,
-    R: CommutativeRing,
-{
-    fn identity() -> Self {
-        Self::new(
+impl_abelian_group!(
+    for [A: UnitalAlgebra<R> + AlgebraWithInvolution<R>, R: CommutativeRing]
+    CayleyDickson<A, R>, Additive;
+    op(x, y) { CayleyDickson::new(add(&x.first, &y.first), add(&x.second, &y.second)) }
+    identity() {
+        CayleyDickson::new(
             <A as UnitalMagma<Additive>>::identity(),
             <A as UnitalMagma<Additive>>::identity(),
         )
     }
-}
+    inverse(x) { CayleyDickson::new(neg(&x.first), neg(&x.second)) }
+);
 
-impl<A, R> Quasigroup<Additive> for CayleyDickson<A, R>
-where
-    A: UnitalAlgebra<R> + AlgebraWithInvolution<R>,
-    R: CommutativeRing,
-{
-    fn ldiv(&self, b: &Self) -> Self {
-        Self::new(
-            <A as Quasigroup<Additive>>::ldiv(&self.first, &b.first),
-            <A as Quasigroup<Additive>>::ldiv(&self.second, &b.second),
+impl_module!(
+    for [A: UnitalAlgebra<R> + AlgebraWithInvolution<R>, R: CommutativeRing]
+    CayleyDickson<A, R>, R;
+    act(s, x) {
+        CayleyDickson::new(
+            <A as LeftAction<R>>::act(s, &x.first),
+            <A as LeftAction<R>>::act(s, &x.second),
         )
     }
+);
 
-    fn rdiv(&self, b: &Self) -> Self {
-        Self::new(
-            <A as Quasigroup<Additive>>::rdiv(&self.first, &b.first),
-            <A as Quasigroup<Additive>>::rdiv(&self.second, &b.second),
-        )
-    }
-}
+// --- Das Produkt: (a,b)(c,d) = (ac − d*b, da + bc*), Einselement (1, 0) -------------------------
 
-impl<A, R> Group<Additive> for CayleyDickson<A, R>
-where
-    A: UnitalAlgebra<R> + AlgebraWithInvolution<R>,
-    R: CommutativeRing,
-{
-    fn inverse(&self) -> Self {
-        Self::new(neg(&self.first), neg(&self.second))
-    }
-}
-
-// --- Die Skalarwirkung: komponentenweise -----------------------------------------------------
-
-impl<A, R> LeftAction<R> for CayleyDickson<A, R>
-where
-    A: UnitalAlgebra<R> + AlgebraWithInvolution<R>,
-    R: CommutativeRing,
-{
-    fn act(scalar: &R, x: &Self) -> Self {
-        Self::new(
-            <A as LeftAction<R>>::act(scalar, &x.first),
-            <A as LeftAction<R>>::act(scalar, &x.second),
-        )
-    }
-}
-
-impl<A, R> Module<R> for CayleyDickson<A, R>
-where
-    A: UnitalAlgebra<R> + AlgebraWithInvolution<R>,
-    R: CommutativeRing,
-{
-}
-
-// --- Das Produkt: (a,b)(c,d) = (ac − d*b, da + bc*) --------------------------------------------
-
-forward_markers!(Multiplicative: PartialMagma, UnitalPartialMagma);
-
-impl<A, R> Magma<Multiplicative> for CayleyDickson<A, R>
-where
-    A: UnitalAlgebra<R> + AlgebraWithInvolution<R>,
-    R: CommutativeRing,
-{
-    fn op(&self, rhs: &Self) -> Self {
-        let (a, b) = (&self.first, &self.second);
-        let (c, d) = (&rhs.first, &rhs.second);
-        Self::new(
+impl_unital_magma!(
+    for [A: UnitalAlgebra<R> + AlgebraWithInvolution<R>, R: CommutativeRing]
+    CayleyDickson<A, R>, Multiplicative;
+    op(x, y) {
+        let (a, b) = (&x.first, &x.second);
+        let (c, d) = (&y.first, &y.second);
+        CayleyDickson::new(
             sub(&mul(a, c), &mul(&conj(d), b)),
             add(&mul(d, a), &mul(b, &conj(c))),
         )
     }
-}
-
-impl<A, R> UnitalMagma<Multiplicative> for CayleyDickson<A, R>
-where
-    A: UnitalAlgebra<R> + AlgebraWithInvolution<R>,
-    R: CommutativeRing,
-{
-    /// Das Einselement ist `(1, 0)`.
-    fn identity() -> Self {
-        Self::new(
+    identity() {
+        CayleyDickson::new(
             <A as UnitalMagma<Multiplicative>>::identity(),
             <A as UnitalMagma<Additive>>::identity(),
         )
     }
-}
+);
 
-impl<A, R> LeftDistributive<Multiplicative, Additive> for CayleyDickson<A, R>
-where
-    A: UnitalAlgebra<R> + AlgebraWithInvolution<R>,
-    R: CommutativeRing,
-{
-}
-impl<A, R> RightDistributive<Multiplicative, Additive> for CayleyDickson<A, R>
-where
-    A: UnitalAlgebra<R> + AlgebraWithInvolution<R>,
-    R: CommutativeRing,
-{
-}
-impl<A, R> Distributive<Multiplicative, Additive> for CayleyDickson<A, R>
-where
-    A: UnitalAlgebra<R> + AlgebraWithInvolution<R>,
-    R: CommutativeRing,
-{
-}
-impl<A, R> Bilinear<CayleyDickson<A, R>, CayleyDickson<A, R>, R, Multiplicative>
-    for CayleyDickson<A, R>
-where
-    A: UnitalAlgebra<R> + AlgebraWithInvolution<R>,
-    R: CommutativeRing,
-{
-}
-impl<A, R> Algebra<R> for CayleyDickson<A, R>
-where
-    A: UnitalAlgebra<R> + AlgebraWithInvolution<R>,
-    R: CommutativeRing,
-{
-}
-impl<A, R> UnitalAlgebra<R> for CayleyDickson<A, R>
-where
-    A: UnitalAlgebra<R> + AlgebraWithInvolution<R>,
-    R: CommutativeRing,
-{
-}
+impl_algebra!(
+    for [A: UnitalAlgebra<R> + AlgebraWithInvolution<R>, R: CommutativeRing]
+    CayleyDickson<A, R>, R, Multiplicative
+);
+impl_unital_algebra!(
+    for [A: UnitalAlgebra<R> + AlgebraWithInvolution<R>, R: CommutativeRing]
+    CayleyDickson<A, R>, R, Multiplicative
+);
 
 // --- Die Involution: (a, b)* = (a*, −b) -------------------------------------------------------
 
