@@ -374,3 +374,55 @@ macro_rules! impl_lie_algebra {
         impl $crate::LieAlgebra<$r> for $l {}
     };
 }
+
+/// Macht den Körper `K` zur Algebra über sich selbst: assoziativ, kommutativ, mit Einselement,
+/// trivialer Involution und der Norm `N(x) = x²`. Das ist der Anfang der Cayley-Dickson-Reihe.
+///
+/// `K` muss schon über [`impl_field!`] ein Körper sein.
+#[macro_export]
+macro_rules! impl_field_algebra {
+    ($k:ty) => {
+        impl $crate::LeftAction<$k> for $k {
+            fn act(scalar: &$k, x: &Self) -> Self {
+                <$k as $crate::Magma<$crate::Multiplicative>>::op(scalar, x)
+            }
+        }
+        impl $crate::Module<$k> for $k {}
+        impl $crate::Bilinear<$k, $k, $k, $crate::Multiplicative> for $k {}
+        impl
+            $crate::Algebra<
+                $k,
+                $crate::Additive,
+                $crate::Multiplicative,
+                $crate::ScalarMultiplication,
+                $crate::Multiplicative,
+            > for $k
+        {
+        }
+        impl $crate::UnitalAlgebra<$k> for $k {}
+        impl $crate::AssociativeAlgebra<$k> for $k {}
+        impl $crate::DivisionAlgebra<$k> for $k {
+            fn recip(&self) -> Option<Self> {
+                <$k as $crate::DivisionRing>::recip(self)
+            }
+        }
+        impl $crate::Involutive for $k {
+            fn conjugate(&self) -> Self {
+                <$k as $crate::Magma<$crate::Additive>>::op(
+                    self,
+                    &<$k as $crate::UnitalMagma<$crate::Additive>>::identity(),
+                )
+            }
+        }
+        impl $crate::TrivialInvolution for $k {}
+        impl $crate::Automorphism<$crate::Additive> for $k {}
+        impl $crate::AntiAutomorphism<$crate::Multiplicative> for $k {}
+        impl $crate::AlgebraWithInvolution<$k> for $k {}
+        impl $crate::QuadraticForm<$k, $crate::Norm> for $k {
+            fn value(&self) -> $k {
+                <$k as $crate::Magma<$crate::Multiplicative>>::op(self, self)
+            }
+        }
+        impl $crate::CompositionAlgebra<$k> for $k {}
+    };
+}

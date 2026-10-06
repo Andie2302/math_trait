@@ -40,6 +40,7 @@
 //! Ring ⊂ CommutativeRing ⊂ Field        (mit zwei Verknüpfungen: Add, Mul)
 //! Module ⊂ VectorSpace;  Algebra ⊂ UnitalAlgebra ⊂ DivisionAlgebra ⊂ CompositionAlgebra
 //! Algebra ⊂ LieAlgebra                  (nicht assoziativ: [x, y], alternierend, Jacobi)
+//! CayleyDickson<A, R>                  (verdoppelt eine Algebra mit Involution: ℝ → ℂ → ℍ → 𝕆 → 𝕊 …)
 //! Commutator<A, R>                      (jede assoziative Algebra A wird mit [x,y] = xy − yx eine LieAlgebra)
 //! ```
 //!
@@ -56,10 +57,12 @@
 #![forbid(unsafe_code)]
 #![warn(missing_docs)]
 
+mod cayley_dickson;
 mod commutator;
 mod macros;
 pub mod numeric;
 
+pub use cayley_dickson::CayleyDickson;
 pub use commutator::Commutator;
 
 // --- Etiketten für Verknüpfungen ---
@@ -430,6 +433,9 @@ pub trait Involutive<Inv = Conjugation>: Sized {
     /// Wendet die Involution an: `x ↦ x*`.
     fn conjugate(&self) -> Self;
 }
+
+/// Die Involution ist die Identität: `x* = x`.
+pub trait TrivialInvolution<Inv = Conjugation>: Involutive<Inv> {}
 
 /// Die Involution `Inv` ist verträglich mit `Op`: `(x ∘ y)* = x* ∘ y*`.
 pub trait Automorphism<Op, Inv = Conjugation>: Magma<Op> + Involutive<Inv> {}

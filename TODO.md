@@ -14,13 +14,13 @@ Offene Themen und Ideen, grob nach Priorität.
 - **Heterogenes `Bilinear`** hat noch keine Methode (die homogene Fassung ist `Magma::op`).
 - **Kehrwert als Typ**: `recip` liefert `Option`. Eleganter wäre ein Typ `NonZero<K>`, der `Group<Multiplicative>` erfüllt (die Einheitengruppe `K×`).
 - **Division**: `a / b = a ⋅ b⁻¹` (und im Schiefkörper `b⁻¹ ⋅ a`) als abgeleitete Methoden.
-- **Makros für generische Typen**: Die Makros kennen keine Typparameter und Bedingungen (`impl<A, R> … where …`). `Commutator` musste deshalb von Hand implementiert werden.
+- **Cayley-Dickson**: `CayleyDickson<A, R>` verdoppelt mit `γ = −1`. Offen: der allgemeine Parameter `γ`, `DivisionAlgebra` (braucht geordnete Körper bzw. eine anisotrope Norm) und die Bedingung "assoziativ" für Verdopplungen ohne Kompositions-Voraussetzung. Die bedingten Impls (alternativ, assoziativ, kommutativ) stützen sich auf bekannte Sätze und die Tests, der Compiler beweist sie nicht.
+- **Makros für generische Typen**: Die Makros kennen keine Typparameter und Bedingungen (`impl<A, R> … where …`). `Commutator` und `CayleyDickson` mussten deshalb von Hand implementiert werden.
 - **Makros für weitere Strukturen**: `impl_module!`/`impl_algebra!` kennen nur die Standard-Etiketten; es fehlen Varianten für `UnitalAlgebra`, `AssociativeAlgebra`, `DivisionAlgebra`, `CompositionAlgebra`, Quasigruppen, Loops, `StarRing`.
 - **Analytische Norm** (`‖x‖ ≥ 0`, Dreiecksungleichung): braucht geordnete Körper bzw. Beträge. Bisher gibt es nur die algebraische Norm-Form (`CompositionAlgebra`).
 - **Rechtswirkung / Bimoduln**: bisher nur `LeftAction`. Nötig für Moduln über nicht-kommutativen Ringen.
 - **Getrennte Etiketten für Skalare und Vektoren** in `Module`: aktuell teilen sie sich `Add`/`Mul`.
 - **Rng und Semiring**: Ring ohne Eins bzw. mit nur kommutativem Monoid in der Addition.
-- **Cayley-Dickson-Konstruktion** selbst (nicht nur die Eigenschaften der Ergebnisse).
 - **Zusammenhang Kürzbarkeit/Idempotenz**: `Band`, `Semilattice` (siehe `Idempotent`).
 - **Kein Default für `Op`** bei den Einzel-Verknüpfungs-Traits. Bei Bedarf ein Standard-Etikett einführen.
 
