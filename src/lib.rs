@@ -40,6 +40,7 @@
 //! Ring ⊂ CommutativeRing ⊂ Field        (mit zwei Verknüpfungen: Add, Mul)
 //! Module ⊂ VectorSpace;  Algebra ⊂ UnitalAlgebra ⊂ DivisionAlgebra ⊂ CompositionAlgebra
 //! Algebra ⊂ LieAlgebra                  (nicht assoziativ: [x, y], alternierend, Jacobi)
+//! Vector<R, N>, Tensor<R, M, N>, Clifford<R, D, Q>  (konkrete Konstruktionen: R^N, V ⊗ W, freie Clifford-Algebra)
 //! TensorProduct, CliffordAlgebra, LieModule  (Strukturen mit einer Funktion: tensor, embed, lie_act)
 //! CayleyDickson<A, R>                  (verdoppelt eine Algebra mit Involution: ℝ → ℂ → ℍ → 𝕆 → 𝕊 …)
 //! Units<K>                             (die Einheitengruppe K×: Elemente ≠ 0 eines Schiefkörpers)
@@ -66,12 +67,14 @@
 
 mod cayley_dickson;
 mod commutator;
+mod constructions;
 mod macros;
 pub mod numeric;
 mod units;
 
 pub use cayley_dickson::{CayleyDickson, Gamma, MinusOne};
 pub use commutator::Commutator;
+pub use constructions::{Clifford, DiagonalForm, Tensor, Vector};
 pub use units::Units;
 
 // --- Etiketten für Verknüpfungen ---

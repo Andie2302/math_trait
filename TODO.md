@@ -5,8 +5,8 @@ Offene Themen und Ideen, grob nach Priorität.
 ## Geplant
 
 - **Weiter bei Lie-Algebren**: Ideale und Quotienten, Killing-Form (eine `BilinearForm` aus der Spur von `ad ∘ ad`, braucht endliche Dimension), einhüllende Algebra, Lie-Gruppen. Darstellungen (`LieModule`) gibt es.
-- **Clifford-Algebren**: die Konstruktion selbst (aus `(V, Q)` die freie Algebra bilden) fehlt. Das Trait `CliffordAlgebra` beschreibt nur Algebren, die schon eine Einbettung haben. Dazu: Spin-Gruppen, graduierte Struktur.
-- **Tensorrechnung**: Das Trait `TensorProduct` gibt es. Offen: Tensorprodukt von Algebren (komponentenweises Produkt), symmetrische/äußere Potenzen, Kontraktion, die Konstruktion `V ⊗ W` selbst als Typ.
+- **Clifford-Algebren**: `Clifford<R, D, Q>` ist die freie Clifford-Algebra zu **Diagonalformen** (Erzeuger-Quadrate `qᵢ`), mit `lift` als universeller Eigenschaft. Offen: nicht diagonale Formen (Basiswechsel), Spin-Gruppen, die graduierte Struktur (gerader und ungerader Teil), Hodge-Dualität.
+- **Tensorrechnung**: `Tensor<R, M, N>` ist `R^M ⊗ R^N` mit `lift` und `is_pure`. Offen: mehr als zwei Faktoren, Tensorprodukt von Algebren (komponentenweises Produkt), Kronecker-Produkt linearer Abbildungen, symmetrische und äußere Potenzen, Kontraktion.
 
 ## Lücken im bisherigen Entwurf
 
