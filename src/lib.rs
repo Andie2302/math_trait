@@ -267,15 +267,37 @@ pub trait Distributive<Mul, Add>: LeftDistributive<Mul, Add> + RightDistributive
 
 // --- Ringe und Körper ---
 
-/// Ring: `(R, Add)` ist eine abelsche Gruppe, `(R, Mul)` ein Monoid, und `Mul` distribuiert über `Add`.
+/// Annihilierend: das Nullelement von `Add` absorbiert unter `Mul`: `0 ⋅ x = x ⋅ 0 = 0`.
+///
+/// In einem Ring folgt das aus dem Distributivgesetz. In einem Halbring muss man es verlangen,
+/// weil es kein additives Inverses gibt, aus dem man es herleiten könnte.
+pub trait Annihilating<Mul, Add = Additive>: Magma<Mul> + UnitalMagma<Add> {}
+
+/// Halbring: `(S, Add)` ist ein kommutatives Monoid, `(S, Mul)` ein Monoid, `Mul` distribuiert
+/// über `Add`, und das Nullelement absorbiert.
+///
+/// Wie ein Ring, aber ohne additive Inverse. Beispiele: die natürlichen Zahlen, die Wahrheitswerte
+/// mit `∨` und `∧`, der tropische Halbring mit `min` und `+`.
+pub trait Semiring<Add = Additive, Mul = Multiplicative>:
+    CommutativeMonoid<Add> + Monoid<Mul> + Distributive<Mul, Add> + Annihilating<Mul, Add>
+{
+}
+
+/// Halbring mit kommutativer Multiplikation.
+pub trait CommutativeSemiring<Add = Additive, Mul = Multiplicative>:
+    Semiring<Add, Mul> + Commutative<Mul>
+{
+}
+
+/// Ring: ein Halbring, dessen Addition eine abelsche Gruppe ist (es gibt additive Inverse).
 pub trait Ring<Add = Additive, Mul = Multiplicative>:
-    AbelianGroup<Add> + Monoid<Mul> + Distributive<Mul, Add>
+    Semiring<Add, Mul> + AbelianGroup<Add>
 {
 }
 
 /// Ring mit kommutativer Multiplikation.
 pub trait CommutativeRing<Add = Additive, Mul = Multiplicative>:
-    Ring<Add, Mul> + Commutative<Mul>
+    Ring<Add, Mul> + CommutativeSemiring<Add, Mul>
 {
 }
 

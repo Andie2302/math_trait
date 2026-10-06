@@ -304,11 +304,21 @@ macro_rules! impl_abelian_group {
 
 #[doc(hidden)]
 #[macro_export]
-macro_rules! __ring_markers {
+macro_rules! __semiring_markers {
     ([$($g:tt)*] $t:ty, $add:ty, $mul:ty) => {
         impl<$($g)*> $crate::LeftDistributive<$mul, $add> for $t {}
         impl<$($g)*> $crate::RightDistributive<$mul, $add> for $t {}
         impl<$($g)*> $crate::Distributive<$mul, $add> for $t {}
+        impl<$($g)*> $crate::Annihilating<$mul, $add> for $t {}
+        impl<$($g)*> $crate::Semiring<$add, $mul> for $t {}
+    };
+}
+
+#[doc(hidden)]
+#[macro_export]
+macro_rules! __ring_markers {
+    ([$($g:tt)*] $t:ty, $add:ty, $mul:ty) => {
+        $crate::__semiring_markers!([$($g)*] $t, $add, $mul);
         impl<$($g)*> $crate::Ring<$add, $mul> for $t {}
     };
 }
@@ -323,6 +333,54 @@ macro_rules! __impl_recip {
                 $body
             }
         }
+    };
+}
+
+/// Halbring: kommutatives Monoid `add`, Monoid `mul`, Distributivgesetz, `zero` absorbiert.
+///
+/// ```
+/// use math_trait::{impl_commutative_semiring, Additive, Multiplicative};
+/// struct Bool(bool);
+/// impl_commutative_semiring!(Bool, Additive, Multiplicative;
+///     add(a, b) { Bool(a.0 || b.0) }
+///     zero() { Bool(false) }
+///     mul(a, b) { Bool(a.0 && b.0) }
+///     one() { Bool(true) }
+/// );
+/// ```
+#[macro_export]
+macro_rules! impl_semiring {
+    (for [$($g:tt)*] $t:ty, $add:ty, $mul:ty;
+        add($a:ident, $b:ident) $addb:block zero() $zero:block
+        mul($c:ident, $d:ident) $mulb:block one() $one:block) => {
+        $crate::impl_commutative_monoid!(for [$($g)*] $t, $add; op($a, $b) $addb identity() $zero);
+        $crate::impl_monoid!(for [$($g)*] $t, $mul; op($c, $d) $mulb identity() $one);
+        $crate::__semiring_markers!([$($g)*] $t, $add, $mul);
+    };
+    ($t:ty, $add:ty, $mul:ty;
+        add($a:ident, $b:ident) $addb:block zero() $zero:block
+        mul($c:ident, $d:ident) $mulb:block one() $one:block) => {
+        $crate::impl_semiring!(for [] $t, $add, $mul;
+            add($a, $b) $addb zero() $zero mul($c, $d) $mulb one() $one);
+    };
+}
+
+/// Kommutativer Halbring: `mul` ist kommutativ.
+#[macro_export]
+macro_rules! impl_commutative_semiring {
+    (for [$($g:tt)*] $t:ty, $add:ty, $mul:ty;
+        add($a:ident, $b:ident) $addb:block zero() $zero:block
+        mul($c:ident, $d:ident) $mulb:block one() $one:block) => {
+        $crate::impl_commutative_monoid!(for [$($g)*] $t, $add; op($a, $b) $addb identity() $zero);
+        $crate::impl_commutative_monoid!(for [$($g)*] $t, $mul; op($c, $d) $mulb identity() $one);
+        $crate::__semiring_markers!([$($g)*] $t, $add, $mul);
+        impl<$($g)*> $crate::CommutativeSemiring<$add, $mul> for $t {}
+    };
+    ($t:ty, $add:ty, $mul:ty;
+        add($a:ident, $b:ident) $addb:block zero() $zero:block
+        mul($c:ident, $d:ident) $mulb:block one() $one:block) => {
+        $crate::impl_commutative_semiring!(for [] $t, $add, $mul;
+            add($a, $b) $addb zero() $zero mul($c, $d) $mulb one() $one);
     };
 }
 
@@ -368,6 +426,7 @@ macro_rules! impl_commutative_ring {
         $crate::impl_commutative_monoid!(for [$($g)*] $t, $mul;
             op($c, $d) $mulb identity() $one);
         $crate::__ring_markers!([$($g)*] $t, $add, $mul);
+        impl<$($g)*> $crate::CommutativeSemiring<$add, $mul> for $t {}
         impl<$($g)*> $crate::CommutativeRing<$add, $mul> for $t {}
     };
     ($t:ty, $add:ty, $mul:ty;

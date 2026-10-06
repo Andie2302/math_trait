@@ -39,7 +39,28 @@ implies!(semimedial: Semimedial => LeftSemimedial, RightSemimedial);
 implies!(self_distributive: SelfDistributive => LeftSelfDistributive, RightSelfDistributive);
 implies!(null_semigroup: NullSemigroup => Semigroup, LeftUnar, RightUnar);
 
-// Ringe und Körper (zwei Verknüpfungen)
+// Halbringe, Ringe und Körper (zwei Verknüpfungen)
+fn semiring<T: Semiring<A, M>, A, M>() {
+    fn need<
+        U: CommutativeMonoid<A2> + Monoid<M2> + Distributive<M2, A2> + Annihilating<M2, A2>,
+        A2,
+        M2,
+    >() {
+    }
+    need::<T, A, M>();
+}
+fn commutative_semiring<T: CommutativeSemiring<A, M>, A, M>() {
+    fn need<U: Semiring<A2, M2> + Commutative<M2>, A2, M2>() {}
+    need::<T, A, M>();
+}
+fn ring_is_semiring<T: Ring<A, M>, A, M>() {
+    fn need<U: Semiring<A2, M2>, A2, M2>() {}
+    need::<T, A, M>();
+}
+fn commutative_ring_is_commutative_semiring<T: CommutativeRing<A, M>, A, M>() {
+    fn need<U: CommutativeSemiring<A2, M2>, A2, M2>() {}
+    need::<T, A, M>();
+}
 fn ring<T: Ring<A, M>, A, M>() {
     fn need<U: AbelianGroup<A2> + Monoid<M2> + Distributive<M2, A2>, A2, M2>() {}
     need::<T, A, M>();
