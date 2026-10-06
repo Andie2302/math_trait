@@ -4,8 +4,8 @@ Offene Themen und Ideen, grob nach Priorität.
 
 ## Geplant
 
-- **Weiter bei Lie-Algebren**: Ideale und Quotienten, Killing-Form (eine `BilinearForm` aus der Spur von `ad ∘ ad`, braucht endliche Dimension), einhüllende Algebra, Lie-Gruppen. Darstellungen (`LieModule`) gibt es.
-- **Clifford-Algebren**: `Clifford<R, D, Q>` ist die freie Clifford-Algebra zu **Diagonalformen**, mit `lift`, Graduierung (`GradedAlgebra`), den drei Involutionen, der geraden Unteralgebra (`EvenSubalgebra`) und der Rotorgruppe (`Rotor`). Offen: nicht diagonale Formen (Basiswechsel), die Pin-Gruppe (Spiegelungen), die ℤ-Graduierung als eigenes Trait (nur ℤ/2 ist ein Trait, die Grade stehen als `grade_part`), Hodge-Dualität, Spinor-Darstellungen als `LieModule` (die Lie-Algebra der Bivektoren).
+- **Weiter bei Lie-Algebren**: Ideale und Quotienten, Killing-Form (eine `BilinearForm` aus der Spur von `ad ∘ ad`, braucht endliche Dimension), einhüllende Algebra, Lie-Gruppen, die Exponentialabbildung `exp: so(N) → Spin(N)` (braucht Charakteristik 0 oder Nilpotenz), Wurzeln und Gewichte, Darstellungstheorie (irreduzible Darstellungen). `so(N)` aus den Bivektoren (`Bivector`) mit Vektor- und Spindarstellung gibt es.
+- **Clifford-Algebren**: `Clifford<R, D, Q>` ist die freie Clifford-Algebra zu **Diagonalformen**, mit `lift`, Graduierung (`GradedAlgebra`), den drei Involutionen, der geraden Unteralgebra (`EvenSubalgebra`) und der Rotorgruppe (`Rotor`). Offen: nicht diagonale Formen (Basiswechsel), die Pin-Gruppe (Spiegelungen), die ℤ-Graduierung als eigenes Trait (nur ℤ/2 ist ein Trait, die Grade stehen als `grade_part`), Hodge-Dualität, die Spindarstellung ist als `LieModule` auf `Clifford` vorhanden, offen sind die Zerlegung in Weyl-Spinoren (gerader und ungerader Teil) und Majorana-Bedingungen.
 - **Tensorrechnung**: `Tensor<R, M, N>` ist `R^M ⊗ R^N` mit `lift` und `is_pure`. Offen: mehr als zwei Faktoren, Tensorprodukt von Algebren (komponentenweises Produkt), Kronecker-Produkt linearer Abbildungen, symmetrische und äußere Potenzen, Kontraktion.
 
 ## Lücken im bisherigen Entwurf

@@ -171,3 +171,9 @@ fn graded<A: GradedAlgebra<R>, R: CommutativeRing>() {
     fn need<U: UnitalAlgebra<R2>, R2: CommutativeRing>() {}
     need::<A, R>();
 }
+
+// so(N) aus Bivektoren
+fn bivector_is_lie<const D: usize, Q: DiagonalForm<R>, R: CommutativeRing>() {
+    fn need<L: LieAlgebra<R2>, R2: CommutativeRing>() {}
+    need::<Bivector<R, D, Q>, R>();
+}

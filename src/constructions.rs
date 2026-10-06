@@ -9,11 +9,11 @@ use core::fmt;
 use core::marker::PhantomData;
 
 use crate::{
-    Additive, AntiAutomorphism, Automorphism, CliffordAlgebra, CommutativeRing, Field,
-    GradeInvolution, GradedAlgebra, Group, Involutive, LeftAction, Magma, Module, Multiplicative,
-    QuadraticForm, Reversion, Ring, TensorProduct, UnitalAlgebra, UnitalMagma, impl_abelian_group,
-    impl_algebra, impl_algebra_with_involution, impl_associative_algebra, impl_group, impl_module,
-    impl_monoid, impl_unital_algebra,
+    Additive, AntiAutomorphism, Automorphism, Bracket, CliffordAlgebra, CommutativeRing, Field,
+    GradeInvolution, GradedAlgebra, Group, Involutive, LeftAction, LieModule, Magma, Module,
+    Multiplicative, QuadraticForm, Reversion, Ring, TensorProduct, UnitalAlgebra, UnitalMagma,
+    impl_abelian_group, impl_algebra, impl_algebra_with_involution, impl_associative_algebra,
+    impl_group, impl_lie_algebra, impl_magma, impl_module, impl_monoid, impl_unital_algebra,
 };
 
 // --- Hilfsfunktionen in `R` ------------------------------------------------------------------
@@ -381,6 +381,21 @@ where
     }
 }
 
+/// Der Vektor `x = Σ xᵢ eᵢ` als Element der Clifford-Algebra (Grad 1).
+fn embed_vector<R, const N: usize, const D: usize, Q>(v: &Vector<R, N>) -> Clifford<R, D, Q>
+where
+    R: CommutativeRing,
+{
+    const { assert!(D == 1 << N, "D muss 2^N sein") };
+    Clifford::new(from_fn(|s| {
+        if s.count_ones() == 1 {
+            copy(&v.0[s.trailing_zeros() as usize])
+        } else {
+            zero()
+        }
+    }))
+}
+
 /// Die Einbettung `V = R^N → Cl`, `x ↦ Σ xᵢ eᵢ`; es gilt `embed(x)² = Q(x) ⋅ 1`.
 impl<R, const N: usize, const D: usize, Q> CliffordAlgebra<Vector<R, N>, R, Q> for Clifford<R, D, Q>
 where
@@ -388,24 +403,7 @@ where
     Q: DiagonalForm<R>,
 {
     fn embed(v: &Vector<R, N>) -> Self {
-        const { assert!(D == 1 << N, "D muss 2^N sein") };
-        Clifford::new(from_fn(|s| {
-            if s.count_ones() == 1 {
-                v.0[s.trailing_zeros() as usize].clone_via_add()
-            } else {
-                zero()
-            }
-        }))
-    }
-}
-
-/// Kopiert ein Ringelement ohne `Clone`-Bedingung: `x + 0`.
-trait CloneViaAdd {
-    fn clone_via_add(&self) -> Self;
-}
-impl<R: Magma<Additive> + UnitalMagma<Additive>> CloneViaAdd for R {
-    fn clone_via_add(&self) -> Self {
-        add(self, &zero())
+        embed_vector(v)
     }
 }
 
@@ -720,3 +718,142 @@ impl_group!(
     identity() { Rotor(Clifford::scalar(one())) }
     inverse(a) { Rotor(a.0.reverse()) }
 );
+
+// =================================================================================================
+// Die Lie-Algebra so(N) aus den Bivektoren
+// =================================================================================================
+
+/// Ein *Bivektor*: ein Element der Clifford-Algebra, das nur aus Basiselementen vom Grad 2
+/// besteht (`eᵢ ⋅ eⱼ`, `i ≠ j`). Es gibt `N(N−1)/2` davon, genau die Dimension von `so(N)`.
+///
+/// Die Bivektoren sind unter dem Kommutator `[x, y] = x y − y x` abgeschlossen und bilden damit
+/// eine **Lie-Algebra**, die Lie-Algebra `so(V, Q)` der Drehgruppe (der Tangentialraum der
+/// [`Rotor`]-Gruppe an der Eins). Sie wirkt auf zwei Weisen:
+///
+/// - auf den **Vektoren** durch `v ↦ [B, v]` (infinitesimale Drehung), siehe das [`LieModule`]
+///   auf [`Vector`],
+/// - auf den **Spinoren** durch Linksmultiplikation `s ↦ B ⋅ s`, siehe das [`LieModule`] auf
+///   [`Clifford`] selbst.
+///
+/// Beide Wirkungen sind verträglich mit der Clifford-Multiplikation `V ⊗ S → S`:
+/// `B ⋅ (v ⋅ s) = [B, v] ⋅ s + v ⋅ (B ⋅ s)`.
+pub struct Bivector<R, const D: usize, Q>(Clifford<R, D, Q>);
+
+impl<R, const D: usize, Q> Bivector<R, D, Q>
+where
+    R: CommutativeRing,
+    Q: DiagonalForm<R>,
+{
+    /// Der Bivektor-Anteil (Grad 2) von `x`.
+    pub fn from_grade_part(x: &Clifford<R, D, Q>) -> Self {
+        Bivector(x.grade_part(2))
+    }
+
+    /// Das Basiselement `eᵢ ⋅ eⱼ` für `i ≠ j`.
+    pub fn basis(i: usize, j: usize) -> Self {
+        assert!(i != j, "ein Bivektor braucht zwei verschiedene Erzeuger");
+        Bivector(clifford_product(
+            &Clifford::generator(i),
+            &Clifford::generator(j),
+        ))
+    }
+
+    /// Das Element als Element der gesamten Algebra.
+    pub fn get(&self) -> &Clifford<R, D, Q> {
+        &self.0
+    }
+
+    /// Gibt das Element der gesamten Algebra zurück.
+    pub fn into_inner(self) -> Clifford<R, D, Q> {
+        self.0
+    }
+
+    /// Der Kommutator mit einem Element `x` der Algebra: `B ⋅ x − x ⋅ B`. Für einen Vektor `x`
+    /// ist das wieder ein Vektor.
+    pub fn commutator_with(&self, x: &Clifford<R, D, Q>) -> Clifford<R, D, Q> {
+        let bx = clifford_product(&self.0, x);
+        let xb = clifford_product(x, &self.0);
+        <Clifford<R, D, Q> as Magma<Additive>>::op(
+            &bx,
+            &<Clifford<R, D, Q> as Group<Additive>>::inverse(&xb),
+        )
+    }
+}
+
+impl<R, const D: usize, Q> Bivector<R, D, Q>
+where
+    R: CommutativeRing + PartialEq,
+    Q: DiagonalForm<R>,
+{
+    /// `Some`, wenn `x` nur aus Grad-2-Anteilen besteht, sonst `None`.
+    pub fn new(x: Clifford<R, D, Q>) -> Option<Self> {
+        (x.grade_part(2) == x).then_some(Bivector(x))
+    }
+}
+
+impl<R: Clone, const D: usize, Q> Clone for Bivector<R, D, Q> {
+    fn clone(&self) -> Self {
+        Bivector(self.0.clone())
+    }
+}
+impl<R: Copy, const D: usize, Q> Copy for Bivector<R, D, Q> {}
+impl<R: PartialEq, const D: usize, Q> PartialEq for Bivector<R, D, Q> {
+    fn eq(&self, other: &Self) -> bool {
+        self.0 == other.0
+    }
+}
+impl<R: fmt::Debug, const D: usize, Q> fmt::Debug for Bivector<R, D, Q> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_tuple("Bivector").field(&self.0).finish()
+    }
+}
+
+impl_abelian_group!(
+    for [R: CommutativeRing, const D: usize, Q: DiagonalForm<R>] Bivector<R, D, Q>, Additive;
+    op(a, b) { Bivector(<Clifford<R, D, Q> as Magma<Additive>>::op(&a.0, &b.0)) }
+    identity() { Bivector(<Clifford<R, D, Q> as UnitalMagma<Additive>>::identity()) }
+    inverse(a) { Bivector(<Clifford<R, D, Q> as Group<Additive>>::inverse(&a.0)) }
+);
+
+impl_module!(
+    for [R: CommutativeRing, const D: usize, Q: DiagonalForm<R>] Bivector<R, D, Q>, R;
+    act(s, x) { Bivector(<Clifford<R, D, Q> as LeftAction<R>>::act(s, &x.0)) }
+);
+
+// Die Klammer ist der Kommutator. Für zwei Bivektoren hat er nur den Grad 2: Die Grade 0 und 4
+// des Produkts sind symmetrisch und fallen heraus.
+impl_magma!(
+    for [R: CommutativeRing, const D: usize, Q: DiagonalForm<R>] Bivector<R, D, Q>, Bracket;
+    op(a, b) { Bivector(a.commutator_with(&b.0)) }
+);
+
+impl_lie_algebra!(
+    for [R: CommutativeRing, const D: usize, Q: DiagonalForm<R>] Bivector<R, D, Q>, R
+);
+
+/// Die **Vektordarstellung** von `so(N)`: Ein Bivektor wirkt auf einen Vektor `v` durch den
+/// Kommutator `[B, v]`, eine infinitesimale Drehung. Das Ergebnis ist wieder ein Vektor, und die
+/// Abbildung ist schiefsymmetrisch bezüglich der quadratischen Form.
+impl<R, const N: usize, const D: usize, Q> LieModule<Bivector<R, D, Q>, R> for Vector<R, N>
+where
+    R: CommutativeRing,
+    Q: DiagonalForm<R>,
+{
+    fn lie_act(x: &Bivector<R, D, Q>, v: &Vector<R, N>) -> Self {
+        let c = x.commutator_with(&embed_vector::<R, N, D, Q>(v));
+        Vector(from_fn(|i| copy(&c.c[1 << i])))
+    }
+}
+
+/// Die **Spindarstellung** von `so(N)`: Ein Bivektor wirkt auf die Clifford-Algebra (den
+/// Spinorraum) durch Linksmultiplikation `s ↦ B ⋅ s`. Weil die Multiplikation assoziativ ist,
+/// wird die Klammer zum Kommutator der Wirkungen.
+impl<R, const D: usize, Q> LieModule<Bivector<R, D, Q>, R> for Clifford<R, D, Q>
+where
+    R: CommutativeRing,
+    Q: DiagonalForm<R>,
+{
+    fn lie_act(x: &Bivector<R, D, Q>, s: &Self) -> Self {
+        clifford_product(&x.0, s)
+    }
+}

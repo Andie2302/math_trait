@@ -42,6 +42,7 @@
 //! Algebra ⊂ LieAlgebra                  (nicht assoziativ: [x, y], alternierend, Jacobi)
 //! Vector<R, N>, Tensor<R, M, N>, Clifford<R, D, Q>  (konkrete Konstruktionen: R^N, V ⊗ W, freie Clifford-Algebra)
 //! GradedAlgebra ⊃ Clifford, EvenSubalgebra, Rotor (die Spin-Gruppe: gerade Elemente mit s·s̃ = 1)
+//! Bivector (so(N): Grad-2-Elemente mit dem Kommutator), LieModule auf Vector und Clifford (Vektor- und Spin-Darstellung)
 //! TensorProduct, CliffordAlgebra, LieModule  (Strukturen mit einer Funktion: tensor, embed, lie_act)
 //! CayleyDickson<A, R>                  (verdoppelt eine Algebra mit Involution: ℝ → ℂ → ℍ → 𝕆 → 𝕊 …)
 //! Units<K>                             (die Einheitengruppe K×: Elemente ≠ 0 eines Schiefkörpers)
@@ -75,7 +76,7 @@ mod units;
 
 pub use cayley_dickson::{CayleyDickson, Gamma, MinusOne};
 pub use commutator::Commutator;
-pub use constructions::{Clifford, DiagonalForm, EvenSubalgebra, Rotor, Tensor, Vector};
+pub use constructions::{Bivector, Clifford, DiagonalForm, EvenSubalgebra, Rotor, Tensor, Vector};
 pub use units::Units;
 
 // --- Etiketten für Verknüpfungen ---
