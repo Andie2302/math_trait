@@ -12,19 +12,41 @@ use crate::{
     impl_unital_magma,
 };
 
+/// Der Parameter `γ` der Verdopplung, ein Element von `R`, das dem Typ `Self` als Etikett
+/// zugeordnet ist.
+///
+/// `γ` muss invertierbar sein, sonst artet die Verdopplung aus. Das prüft der Compiler nicht.
+/// Mit `γ = −1` ([`MinusOne`]) entstehen ℂ, ℍ, 𝕆 über ℝ. Andere Werte liefern andere Formen,
+/// etwa gespaltene Algebren (Nullteiler) oder, über endlichen Körpern, Körper.
+pub trait Gamma<R> {
+    /// Der Wert von `γ`.
+    fn gamma() -> R;
+}
+
+/// Das Standard-`γ = −1`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct MinusOne;
+
+impl<R: crate::Ring> Gamma<R> for MinusOne {
+    fn gamma() -> R {
+        <R as Group<Additive>>::inverse(&<R as UnitalMagma<Multiplicative>>::identity())
+    }
+}
+
 /// Die Verdopplung der Algebra `A` über `R`: Paare `(a, b)` mit
 ///
 /// ```text
-/// (a, b) · (c, d) = (a·c − d*·b,  d·a + b·c*)
+/// (a, b) · (c, d) = (a·c + γ·d*·b,  d·a + b·c*)
 /// (a, b)*         = (a*, −b)
 /// ```
 ///
-/// Addition und Skalarmultiplikation wirken komponentenweise. Aus ℝ entsteht so ℂ, daraus ℍ,
+/// `γ` kommt aus `G` (Standard: `−1`, siehe [`Gamma`]). Addition und Skalarmultiplikation wirken
+/// komponentenweise. Aus ℝ entsteht so ℂ, daraus ℍ,
 /// 𝕆 (Oktonionen), 𝕊 (Sedenionen) und so fort.
 ///
 /// Was die Verdopplung erbt, hängt von `A` ab (jeweils unter der genannten Bedingung):
 ///
-/// | Eigenschaft von `CayleyDickson<A, R>` | Bedingung an `A` |
+/// | Eigenschaft von `CayleyDickson<A, R, G>` | Bedingung an `A` |
 /// |---|---|
 /// | Algebra, Einselement, Involution | immer (unitale Algebra mit Involution) |
 /// | Norm-Form, `CompositionAlgebra` | Kompositionsalgebra und assoziativ |
@@ -35,13 +57,13 @@ use crate::{
 /// Das ist die bekannte Reihe: ℝ → ℂ bleibt kommutativ, ℍ ist assoziativ, aber nicht
 /// kommutativ, 𝕆 ist nur noch alternativ, und die Sedenionen verlieren auch das und die
 /// Kompositionseigenschaft (es entstehen Nullteiler).
-pub struct CayleyDickson<A, R> {
+pub struct CayleyDickson<A, R, G = MinusOne> {
     first: A,
     second: A,
-    _scalars: PhantomData<fn() -> R>,
+    _scalars: PhantomData<fn() -> (R, G)>,
 }
 
-impl<A, R> CayleyDickson<A, R> {
+impl<A, R, G> CayleyDickson<A, R, G> {
     /// Das Paar `(first, second)`.
     pub fn new(first: A, second: A) -> Self {
         CayleyDickson {
@@ -67,21 +89,21 @@ impl<A, R> CayleyDickson<A, R> {
     }
 }
 
-impl<A: Clone, R> Clone for CayleyDickson<A, R> {
+impl<A: Clone, R, G> Clone for CayleyDickson<A, R, G> {
     fn clone(&self) -> Self {
         Self::new(self.first.clone(), self.second.clone())
     }
 }
 
-impl<A: Copy, R> Copy for CayleyDickson<A, R> {}
+impl<A: Copy, R, G> Copy for CayleyDickson<A, R, G> {}
 
-impl<A: PartialEq, R> PartialEq for CayleyDickson<A, R> {
+impl<A: PartialEq, R, G> PartialEq for CayleyDickson<A, R, G> {
     fn eq(&self, other: &Self) -> bool {
         self.first == other.first && self.second == other.second
     }
 }
 
-impl<A: fmt::Debug, R> fmt::Debug for CayleyDickson<A, R> {
+impl<A: fmt::Debug, R, G> fmt::Debug for CayleyDickson<A, R, G> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_tuple("CayleyDickson")
             .field(&self.first)
@@ -98,9 +120,6 @@ fn add<A: Magma<Additive>>(x: &A, y: &A) -> A {
 fn neg<A: Group<Additive>>(x: &A) -> A {
     <A as Group<Additive>>::inverse(x)
 }
-fn sub<A: Group<Additive>>(x: &A, y: &A) -> A {
-    add(x, &neg(y))
-}
 fn mul<A: Magma<Multiplicative>>(x: &A, y: &A) -> A {
     <A as Magma<Multiplicative>>::op(x, y)
 }
@@ -113,8 +132,8 @@ fn conj<A: Involutive<Conjugation>>(x: &A) -> A {
 // --- Die Addition und Skalarwirkung: komponentenweise ------------------------------------------
 
 impl_abelian_group!(
-    for [A: UnitalAlgebra<R> + AlgebraWithInvolution<R>, R: CommutativeRing]
-    CayleyDickson<A, R>, Additive;
+    for [A: UnitalAlgebra<R> + AlgebraWithInvolution<R>, R: CommutativeRing, G: Gamma<R>]
+    CayleyDickson<A, R, G>, Additive;
     op(x, y) { CayleyDickson::new(add(&x.first, &y.first), add(&x.second, &y.second)) }
     identity() {
         CayleyDickson::new(
@@ -126,8 +145,8 @@ impl_abelian_group!(
 );
 
 impl_module!(
-    for [A: UnitalAlgebra<R> + AlgebraWithInvolution<R>, R: CommutativeRing]
-    CayleyDickson<A, R>, R;
+    for [A: UnitalAlgebra<R> + AlgebraWithInvolution<R>, R: CommutativeRing, G: Gamma<R>]
+    CayleyDickson<A, R, G>, R;
     act(s, x) {
         CayleyDickson::new(
             <A as LeftAction<R>>::act(s, &x.first),
@@ -136,18 +155,17 @@ impl_module!(
     }
 );
 
-// --- Das Produkt: (a,b)(c,d) = (ac − d*b, da + bc*), Einselement (1, 0) -------------------------
+// --- Das Produkt: (a,b)(c,d) = (ac + γd*b, da + bc*), Einselement (1, 0) -------------------------
 
 impl_unital_magma!(
-    for [A: UnitalAlgebra<R> + AlgebraWithInvolution<R>, R: CommutativeRing]
-    CayleyDickson<A, R>, Multiplicative;
+    for [A: UnitalAlgebra<R> + AlgebraWithInvolution<R>, R: CommutativeRing, G: Gamma<R>]
+    CayleyDickson<A, R, G>, Multiplicative;
     op(x, y) {
         let (a, b) = (&x.first, &x.second);
         let (c, d) = (&y.first, &y.second);
-        CayleyDickson::new(
-            sub(&mul(a, c), &mul(&conj(d), b)),
-            add(&mul(d, a), &mul(b, &conj(c))),
-        )
+        let gamma = <G as Gamma<R>>::gamma();
+        let scaled = <A as LeftAction<R>>::act(&gamma, &mul(&conj(d), b));
+        CayleyDickson::new(add(&mul(a, c), &scaled), add(&mul(d, a), &mul(b, &conj(c))))
     }
     identity() {
         CayleyDickson::new(
@@ -158,57 +176,62 @@ impl_unital_magma!(
 );
 
 impl_algebra!(
-    for [A: UnitalAlgebra<R> + AlgebraWithInvolution<R>, R: CommutativeRing]
-    CayleyDickson<A, R>, R, Multiplicative
+    for [A: UnitalAlgebra<R> + AlgebraWithInvolution<R>, R: CommutativeRing, G: Gamma<R>]
+    CayleyDickson<A, R, G>, R, Multiplicative
 );
 impl_unital_algebra!(
-    for [A: UnitalAlgebra<R> + AlgebraWithInvolution<R>, R: CommutativeRing]
-    CayleyDickson<A, R>, R, Multiplicative
+    for [A: UnitalAlgebra<R> + AlgebraWithInvolution<R>, R: CommutativeRing, G: Gamma<R>]
+    CayleyDickson<A, R, G>, R, Multiplicative
 );
 
 // --- Die Involution: (a, b)* = (a*, −b) -------------------------------------------------------
 
-impl<A, R> Involutive for CayleyDickson<A, R>
+impl<A, R, G> Involutive for CayleyDickson<A, R, G>
 where
     A: UnitalAlgebra<R> + AlgebraWithInvolution<R>,
     R: CommutativeRing,
+    G: Gamma<R>,
 {
     fn conjugate(&self) -> Self {
         Self::new(conj(&self.first), neg(&self.second))
     }
 }
 
-impl<A, R> Automorphism<Additive> for CayleyDickson<A, R>
+impl<A, R, G> Automorphism<Additive> for CayleyDickson<A, R, G>
 where
     A: UnitalAlgebra<R> + AlgebraWithInvolution<R>,
     R: CommutativeRing,
+    G: Gamma<R>,
 {
 }
-impl<A, R> AntiAutomorphism<Multiplicative> for CayleyDickson<A, R>
+impl<A, R, G> AntiAutomorphism<Multiplicative> for CayleyDickson<A, R, G>
 where
     A: UnitalAlgebra<R> + AlgebraWithInvolution<R>,
     R: CommutativeRing,
+    G: Gamma<R>,
 {
 }
-impl<A, R> AlgebraWithInvolution<R> for CayleyDickson<A, R>
+impl<A, R, G> AlgebraWithInvolution<R> for CayleyDickson<A, R, G>
 where
     A: UnitalAlgebra<R> + AlgebraWithInvolution<R>,
     R: CommutativeRing,
+    G: Gamma<R>,
 {
 }
 
-// --- Die Norm: N(a, b) = N(a) + N(b) -----------------------------------------------------------
+// --- Die Norm: N(a, b) = N(a) − γ·N(b) -----------------------------------------------------------
 
-impl<A, R> QuadraticForm<R, Norm> for CayleyDickson<A, R>
+impl<A, R, G> QuadraticForm<R, Norm> for CayleyDickson<A, R, G>
 where
     A: CompositionAlgebra<R>,
     R: Field,
+    G: Gamma<R>,
 {
     fn value(&self) -> R {
-        <R as Magma<Additive>>::op(
-            &<A as QuadraticForm<R, Norm>>::value(&self.first),
-            &<A as QuadraticForm<R, Norm>>::value(&self.second),
-        )
+        let na = <A as QuadraticForm<R, Norm>>::value(&self.first);
+        let nb = <A as QuadraticForm<R, Norm>>::value(&self.second);
+        let gamma_nb = <R as Magma<Multiplicative>>::op(&<G as Gamma<R>>::gamma(), &nb);
+        <R as Magma<Additive>>::op(&na, &<R as Group<Additive>>::inverse(&gamma_nb))
     }
 }
 
@@ -216,66 +239,75 @@ where
 //
 // Bedingung "Kompositionsalgebra und assoziativ": Satz von Hurwitz, ℍ → 𝕆.
 
-impl<A, R> Alternative<Multiplicative> for CayleyDickson<A, R>
+impl<A, R, G> Alternative<Multiplicative> for CayleyDickson<A, R, G>
 where
     A: CompositionAlgebra<R> + Semigroup<Multiplicative>,
     R: Field,
+    G: Gamma<R>,
 {
 }
-impl<A, R> Flexible<Multiplicative> for CayleyDickson<A, R>
+impl<A, R, G> Flexible<Multiplicative> for CayleyDickson<A, R, G>
 where
     A: CompositionAlgebra<R> + Semigroup<Multiplicative>,
     R: Field,
+    G: Gamma<R>,
 {
 }
-impl<A, R> PowerAssociative<Multiplicative> for CayleyDickson<A, R>
+impl<A, R, G> PowerAssociative<Multiplicative> for CayleyDickson<A, R, G>
 where
     A: CompositionAlgebra<R> + Semigroup<Multiplicative>,
     R: Field,
+    G: Gamma<R>,
 {
 }
-impl<A, R> AlternativeAlgebra<R> for CayleyDickson<A, R>
+impl<A, R, G> AlternativeAlgebra<R> for CayleyDickson<A, R, G>
 where
     A: CompositionAlgebra<R> + Semigroup<Multiplicative>,
     R: Field,
+    G: Gamma<R>,
 {
 }
-impl<A, R> CompositionAlgebra<R> for CayleyDickson<A, R>
+impl<A, R, G> CompositionAlgebra<R> for CayleyDickson<A, R, G>
 where
     A: CompositionAlgebra<R> + Semigroup<Multiplicative>,
     R: Field,
+    G: Gamma<R>,
 {
 }
 
 // Zusätzlich kommutativ: die Verdopplung ist assoziativ (ℂ → ℍ).
 
-impl<A, R> Semigroupoid<Multiplicative> for CayleyDickson<A, R>
+impl<A, R, G> Semigroupoid<Multiplicative> for CayleyDickson<A, R, G>
 where
     A: CompositionAlgebra<R> + Semigroup<Multiplicative> + Commutative<Multiplicative>,
     R: Field,
+    G: Gamma<R>,
 {
 }
-impl<A, R> Semigroup<Multiplicative> for CayleyDickson<A, R>
+impl<A, R, G> Semigroup<Multiplicative> for CayleyDickson<A, R, G>
 where
     A: CompositionAlgebra<R> + Semigroup<Multiplicative> + Commutative<Multiplicative>,
     R: Field,
+    G: Gamma<R>,
 {
 }
-impl<A, R> AssociativeAlgebra<R> for CayleyDickson<A, R>
+impl<A, R, G> AssociativeAlgebra<R> for CayleyDickson<A, R, G>
 where
     A: CompositionAlgebra<R> + Semigroup<Multiplicative> + Commutative<Multiplicative>,
     R: Field,
+    G: Gamma<R>,
 {
 }
 
 // Zusätzlich triviale Involution: die Verdopplung ist kommutativ (ℝ → ℂ).
 
-impl<A, R> Commutative<Multiplicative> for CayleyDickson<A, R>
+impl<A, R, G> Commutative<Multiplicative> for CayleyDickson<A, R, G>
 where
     A: CompositionAlgebra<R>
         + Semigroup<Multiplicative>
         + Commutative<Multiplicative>
         + TrivialInvolution,
     R: Field,
+    G: Gamma<R>,
 {
 }

@@ -64,7 +64,7 @@ mod commutator;
 mod macros;
 pub mod numeric;
 
-pub use cayley_dickson::CayleyDickson;
+pub use cayley_dickson::{CayleyDickson, Gamma, MinusOne};
 pub use commutator::Commutator;
 
 // --- Etiketten für Verknüpfungen ---
