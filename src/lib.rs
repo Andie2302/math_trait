@@ -1,7 +1,7 @@
 /// Menge mit abgeschlossener Verknüpfung.
 pub trait Magma {}
 
-/// Magma, in dem Gleichungen `a ∘ x = b` und `y ∘ a = b` stets eindeutig lösbar sind (Teilbarkeit).
+/// Magma mit Teilbarkeit: `a ∘ x = b` und `y ∘ a = b` sind stets eindeutig lösbar.
 pub trait Quasigroup: Magma {}
 
 /// Quasigruppe mit neutralem Element. Nicht notwendig assoziativ.
