@@ -99,3 +99,9 @@ fn lie_algebra<L: LieAlgebra<R>, R: CommutativeRing>() {
     }
     need::<L, R>();
 }
+
+// Kommutator-Konstruktion: jede assoziative Algebra liefert eine Lie-Algebra
+fn commutator<A: AssociativeAlgebra<R>, R: CommutativeRing>() {
+    fn need<L: LieAlgebra<R2>, R2: CommutativeRing>() {}
+    need::<Commutator<A, R>, R>();
+}

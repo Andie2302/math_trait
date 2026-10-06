@@ -40,6 +40,7 @@
 //! Ring ⊂ CommutativeRing ⊂ Field        (mit zwei Verknüpfungen: Add, Mul)
 //! Module ⊂ VectorSpace;  Algebra ⊂ UnitalAlgebra ⊂ DivisionAlgebra ⊂ CompositionAlgebra
 //! Algebra ⊂ LieAlgebra                  (nicht assoziativ: [x, y], alternierend, Jacobi)
+//! Commutator<A, R>                      (jede assoziative Algebra A wird mit [x,y] = xy − yx eine LieAlgebra)
 //! ```
 //!
 //! Zahlenartige Traits (`Number`, `Integer`, `Float`, …) stehen getrennt im Modul [`numeric`].
@@ -55,8 +56,11 @@
 #![forbid(unsafe_code)]
 #![warn(missing_docs)]
 
+mod commutator;
 mod macros;
 pub mod numeric;
+
+pub use commutator::Commutator;
 
 // --- Etiketten für Verknüpfungen ---
 
