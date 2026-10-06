@@ -106,8 +106,8 @@ fn reversion_reverses_the_product() {
     let ys = all::<4, Ones>();
     for x in ys.iter().step_by(7) {
         assert_eq!(x.reverse().reverse(), *x);
-        for y in ys.iter().cloned() {
-            assert_eq!(mul(x, &y).reverse(), mul(&y.reverse(), &x.reverse()));
+        for y in &ys {
+            assert_eq!(mul(x, y).reverse(), mul(&y.reverse(), &x.reverse()));
         }
     }
 }
@@ -117,9 +117,9 @@ fn grade_involution_preserves_the_product() {
     let ys = all::<4, Ones>();
     for x in ys.iter().step_by(7) {
         assert_eq!(x.grade_involution().grade_involution(), *x);
-        for y in ys.iter().cloned() {
+        for y in &ys {
             assert_eq!(
-                mul(x, &y).grade_involution(),
+                mul(x, y).grade_involution(),
                 mul(&x.grade_involution(), &y.grade_involution())
             );
         }
@@ -133,9 +133,9 @@ fn clifford_conjugation_is_grade_involution_after_reversion_and_an_anti_automorp
     let ys = all::<4, Ones>();
     for x in ys.iter().step_by(7) {
         assert_eq!(x.clifford_conjugate(), x.reverse().grade_involution());
-        for y in ys.iter().cloned() {
+        for y in &ys {
             assert_eq!(
-                mul(x, &y).clifford_conjugate(),
+                mul(x, y).clifford_conjugate(),
                 mul(&y.clifford_conjugate(), &x.clifford_conjugate())
             );
         }
