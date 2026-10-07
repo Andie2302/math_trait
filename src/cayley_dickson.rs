@@ -49,7 +49,8 @@ impl<R: crate::Ring> Gamma<R> for MinusOne {
 /// | Eigenschaft von `CayleyDickson<A, R, G>` | Bedingung an `A` |
 /// |---|---|
 /// | Algebra, Einselement, Involution | immer (unitale Algebra mit Involution) |
-/// | Norm-Form, `CompositionAlgebra` | Kompositionsalgebra und assoziativ |
+/// | Norm-Form (`QuadraticForm<R, Norm>`) | Kompositionsalgebra |
+/// | `CompositionAlgebra` | Kompositionsalgebra und assoziativ |
 /// | alternativ (auch flexibel, potenz-assoziativ) | Kompositionsalgebra und assoziativ |
 /// | assoziativ | zusätzlich kommutativ |
 /// | kommutativ | zusätzlich triviale Involution |

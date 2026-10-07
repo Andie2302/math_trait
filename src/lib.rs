@@ -8,16 +8,25 @@
 //! Nur wenige Traits haben Methoden, alle anderen sind leere Marker, deren Gesetz in der
 //! Doc-Zeile steht:
 //!
-//! | Trait | Methode |
+//! | Trait | Methoden |
 //! |---|---|
 //! | [`Magma`] | `op` |
 //! | [`UnitalMagma`] | `identity` |
 //! | [`Quasigroup`] | `ldiv`, `rdiv` |
 //! | [`Group`] | `inverse` |
+//! | [`DivisionRing`] | `recip`, `div`, `div_left` |
+//! | [`DivisionAlgebra`] | `recip` |
 //! | [`LeftAction`] | `act` |
 //! | [`BilinearForm`] | `form` |
 //! | [`QuadraticForm`] | `value` |
+//! | [`BilinearMap`] | `bilinear` |
 //! | [`Involutive`] | `conjugate` |
+//! | [`TensorProduct`] | `tensor` |
+//! | [`CliffordAlgebra`] | `embed` |
+//! | [`LieModule`] | `lie_act` |
+//! | [`GradedAlgebra`] | `even_part`, `odd_part`, `grade_involution` |
+//! | [`Gamma`], [`DiagonalForm`] | `gamma`, `square` (Parameter der Konstruktionen) |
+//! | [`numeric::Number`] | `zero`, `one` |
 //!
 //! ## Die Verknüpfung ist ein Typparameter
 //!
@@ -25,43 +34,89 @@
 //! `Magma<Multiplicative>`). Das Etikett `Op` ist ein beliebiger Typ. Bei mehreren Rollen
 //! ruft man `<T as Magma<Additive>>::op(&a, &b)` auf.
 //!
+//! ## Etiketten und die Orphan-Regel
+//!
+//! Die Etiketten [`Additive`], [`Multiplicative`], [`ScalarMultiplication`], [`Conjugation`],
+//! [`Norm`], [`Bracket`] … sind gewöhnliche Strukturen. Wer eine eigene Verknüpfung braucht
+//! (`struct Min;`, `struct Konkatenation;`), definiert ein eigenes Etikett.
+//!
+//! Wegen der Orphan-Regel kann ein *anderes* Crate `Magma<Additive>` nicht für fremde Typen wie
+//! `i32` implementieren: Weder das Trait noch der Typ gehören dort dazu. Mit eigenen Typen
+//! (auch Newtypes um `i32`) oder mit einem eigenen Etikett geht es. Die höheren Schichten
+//! (`Module`, `Algebra`, die Konstruktionen) kennen aber nur die Standard-Etiketten
+//! `Additive`/`Multiplicative`. Impls für die Basisdatentypen sollen deshalb später in diesem
+//! Crate stehen, hinter Feature-Flags (siehe `TODO.md`).
+//!
+//! **Marker-Impls sind Zusicherungen.** Der Compiler prüft die Gesetze (Assoziativität, Inverse,
+//! Distributivität, …) nie, auch nicht bei handgeschriebenen Impls und nicht bei den Makros.
+//!
 //! ## Hierarchie
 //!
+//! `A → B` heißt: `B` hat `A` als Supertrait.
+//!
 //! ```text
-//! PartialMagma ─ UnitalPartialMagma ─┐
-//!      │                             ├─ SmallCategory ─ Groupoid
-//!      └─ Semigroupoid ─────────────┘
+//! Partielle Seite:  PartialMagma → UnitalPartialMagma ┐
+//!                   PartialMagma → Semigroupoid ──────┴→ SmallCategory → Groupoid
 //!
-//! Magma ┬─ Quasigroup ─┐
-//!       │              ├─ Loop ──────────────┐
-//!       ├─ UnitalMagma ┘                     │
-//!       └─ Semigroup ─ Monoid ───────────────┴─ Group ─ AbelianGroup
+//! Eine Verknüpfung: Magma → Quasigroup ┐
+//!                   Magma → UnitalMagma┴→ Loop ──┐
+//!                   Magma → Semigroup → Monoid ──┴→ Group → AbelianGroup
+//!                   Semigroup + Quasigroup → AssociativeQuasigroup  (Obertrait von Group)
+//!                   Semigroup + Commutative → CommutativeSemigroup → CommutativeMonoid
+//!                   Semigroup + Idempotent → Band;  Band + CommutativeSemigroup → Semilattice
+//!                   Marker: Cancellative, Alternative, Flexible, PowerAssociative, Medial-,
+//!                   Selbstdistributiv-, Unar- und Potenz-Familie
 //!
-//! Ring ⊂ CommutativeRing ⊂ Field        (mit zwei Verknüpfungen: Add, Mul)
-//! Module ⊂ VectorSpace;  Algebra ⊂ UnitalAlgebra ⊂ DivisionAlgebra ⊂ CompositionAlgebra
-//! Algebra ⊂ LieAlgebra                  (nicht assoziativ: [x, y], alternierend, Jacobi)
-//! Vector<R, N>, Tensor<R, M, N>, Clifford<R, D, Q>  (konkrete Konstruktionen: R^N, V ⊗ W, freie Clifford-Algebra)
-//! GradedAlgebra ⊃ Clifford, EvenSubalgebra, Rotor (die Spin-Gruppe: gerade Elemente mit s·s̃ = 1)
-//! Bivector (so(N): Grad-2-Elemente mit dem Kommutator), LieModule auf Vector und Clifford (Vektor- und Spin-Darstellung)
-//! TensorProduct, CliffordAlgebra, LieModule  (Strukturen mit einer Funktion: tensor, embed, lie_act)
-//! CayleyDickson<A, R>                  (verdoppelt eine Algebra mit Involution: ℝ → ℂ → ℍ → 𝕆 → 𝕊 …)
-//! Units<K>                             (die Einheitengruppe K×: Elemente ≠ 0 eines Schiefkörpers)
-//! Commutator<A, R>                      (jede assoziative Algebra A wird mit [x,y] = xy − yx eine LieAlgebra)
+//! Zwei Verknüpfungen (Add, Mul):
+//!                   CommutativeMonoid<Add> + Monoid<Mul> + Distributive → Semiring
+//!                   AbelianGroup<Add> + Semigroup<Mul> + Distributive → Rng
+//!                   Rng + Semiring → Ring → CommutativeRing
+//!                   Ring → DivisionRing;  DivisionRing + CommutativeRing → Field
+//!
+//! Dritte Verknüpfung (Skalare R wirken):
+//!                   LeftAction + AbelianGroup → Module → VectorSpace   (automatisch über Körpern)
+//!                   Module + Distributive + Bilinear → Algebra → Unital-/Associative-/
+//!                   AlternativeAlgebra;  UnitalAlgebra → DivisionAlgebra, GradedAlgebra
+//!                   UnitalAlgebra + AlgebraWithInvolution + QuadraticForm → CompositionAlgebra
+//!                   Algebra + Alternating + Jacobi → LieAlgebra → LieModule (adjungierte Darstellung)
+//!                   Involutive → Automorphism, AntiAutomorphism, TrivialInvolution → StarRing
+//!                   TensorProduct, CliffordAlgebra, BilinearMap, BilinearForm, QuadraticForm
+//! ```
+//!
+//! Dazu kommen konkrete Konstruktionen, die nur aus diesen Traits gebaut sind:
+//!
+//! ```text
+//! Commutator<A, R>        jede assoziative Algebra wird mit [x, y] = xy − yx eine LieAlgebra
+//! CayleyDickson<A, R, G>  verdoppelt eine Algebra mit Involution: ℝ → ℂ → ℍ → 𝕆 → 𝕊 …
+//!                         (G: Gamma<R> legt den Parameter γ fest, Standard MinusOne)
+//! Units<K>                die Einheitengruppe K× eines Schiefkörpers
+//! Vector<R, N>            der freie Modul R^N
+//! Tensor<R, M, N>         das Tensorprodukt V ⊗ W
+//! Clifford<R, D, Q>       die freie Clifford-Algebra zur DiagonalForm Q, graduiert (GradedAlgebra)
+//! EvenSubalgebra          die gerade Unteralgebra der Clifford-Algebra
+//! Rotor                   die Spin-Gruppe: gerade s mit s·s̃ = 1, die Vektoren erhalten
+//! Bivector                so(N): Grad-2-Elemente mit dem Kommutator; Vektor- und Spindarstellung
 //! ```
 //!
 //! Zahlenartige Traits (`Number`, `Integer`, `Float`, …) stehen getrennt im Modul [`numeric`].
 //!
 //! ## Implementieren mit Makros
 //!
-//! Eine Gruppe verlangt 15 Impls, eine Lie-Algebra weit mehr. Die Makros `impl_magma!`,
-//! `impl_unital_magma!`, `impl_quasigroup!`, `impl_loop!`, `impl_semigroup!`, `impl_monoid!`,
-//! `impl_band!`, `impl_semilattice!`, `impl_group!`, `impl_abelian_group!`, `impl_semiring!`,
-//! `impl_rng!`, `impl_ring!`, `impl_field!`,
-//! `impl_star_ring!`, `impl_module!`, `impl_algebra!` (mit Zusätzen wie
-//! `impl_unital_algebra!`; für Ringe `impl_ring_algebra!`), `impl_algebra_with_involution!`,
-//! `impl_composition_algebra!` und `impl_lie_algebra!` erzeugen sie aus kurzen Rümpfen. Alle nehmen
-//! optional Typparameter mit Bedingungen (`for [A: Bound] Typ<A>`), siehe das Modul `macros`
-//! im Quelltext. Die Gesetze prüfen die Makros nicht: Wer eins benutzt, behauptet sie.
+//! Eine Gruppe verlangt 19 Impls, eine Lie-Algebra weit mehr. Die Makros `impl_*!` erzeugen sie
+//! aus kurzen Rümpfen. Alle nehmen optional Typparameter mit Bedingungen vorweg
+//! (`impl_x!(for [A: Bound, const N: usize] Typ<A>, Etikett; …)`). Die Gesetze prüfen die Makros
+//! nicht: Wer eins benutzt, behauptet sie. Für einen Typ und ein Etikett nimmt man genau **ein**
+//! Makro der jeweiligen Reihe:
+//!
+//! | Reihe | Makros |
+//! |---|---|
+//! | eine Verknüpfung | `impl_magma!`, `impl_commutative_magma!`, `impl_unital_magma!`, `impl_quasigroup!`, `impl_loop!`, `impl_semigroup!`, `impl_commutative_semigroup!`, `impl_band!`, `impl_semilattice!`, `impl_monoid!`, `impl_commutative_monoid!`, `impl_group!`, `impl_abelian_group!` |
+//! | zwei Verknüpfungen | `impl_semiring!`, `impl_commutative_semiring!`, `impl_rng!`, `impl_ring!`, `impl_commutative_ring!`, `impl_division_ring!`, `impl_field!`, `impl_star_ring!` |
+//! | Moduln und Algebren | `impl_module!`, `impl_algebra!` mit den Zusätzen `impl_unital_algebra!`, `impl_associative_algebra!`, `impl_alternative_algebra!`, `impl_division_algebra!`; für Ringe `impl_ring_algebra!`, für Körper über sich selbst `impl_field_algebra!` |
+//! | Involution, Norm, Lie | `impl_algebra_with_involution!`, `impl_composition_algebra!`, `impl_lie_algebra!` |
+//!
+//! Die ausführliche Anleitung (Reihen, Kombinationsregeln, `for [..]`-Syntax) steht in der
+//! Dokumentation der einzelnen Makros und im Quelltext von `macros.rs`.
 
 #![no_std]
 #![forbid(unsafe_code)]
@@ -118,16 +173,21 @@ pub struct Bracket;
 /// Menge mit Verknüpfung, die nicht für alle Paare definiert sein muss.
 pub trait PartialMagma<Op> {}
 
-/// Partielles Magma mit neutralem Element.
+/// Partielles Magma mit Einselementen: Jedes Element hat ein linkes und ein rechtes Einselement
+/// (`e ∘ x = x`, `x ∘ f = x`), die im Allgemeinen verschieden sind und nur für die Elemente gelten,
+/// mit denen sie verknüpfbar sind. Ein einziges Einselement für alle Paare liefert erst
+/// [`UnitalMagma`].
 pub trait UnitalPartialMagma<Op>: PartialMagma<Op> {}
 
 /// Partielles Magma mit assoziativer Verknüpfung.
 pub trait Semigroupoid<Op>: PartialMagma<Op> {}
 
-/// Semigroupoid mit neutralem Element (Kategorie mit Menge von Objekten).
+/// Semigroupoid mit Einselementen: eine kleine Kategorie. Jedes Objekt hat seine Identität, die
+/// Verknüpfung ist nur bei passender Quelle und passendem Ziel definiert. Ein Monoid ist eine
+/// Kategorie mit einem Objekt.
 pub trait SmallCategory<Op>: Semigroupoid<Op> + UnitalPartialMagma<Op> {}
 
-/// Kleine Kategorie, in der jede Verknüpfung umkehrbar ist.
+/// Kleine Kategorie, in der jeder Morphismus invertierbar ist.
 pub trait Groupoid<Op>: SmallCategory<Op> {}
 
 // --- Totale Seite: die Verknüpfung gilt für alle Paare ---
@@ -135,21 +195,25 @@ pub trait Groupoid<Op>: SmallCategory<Op> {}
 /// Menge mit abgeschlossener Verknüpfung.
 pub trait Magma<Op>: PartialMagma<Op> + Sized {
     /// Verknüpft `self` mit `rhs`.
+    #[must_use]
     fn op(&self, rhs: &Self) -> Self;
 }
 
 /// Magma mit Teilbarkeit: `a ∘ x = b` und `y ∘ a = b` sind stets eindeutig lösbar.
 pub trait Quasigroup<Op>: Magma<Op> + Cancellative<Op> {
     /// Löst `self ∘ x = b` nach `x`.
+    #[must_use]
     fn ldiv(&self, b: &Self) -> Self;
 
     /// Löst `y ∘ self = b` nach `y`.
+    #[must_use]
     fn rdiv(&self, b: &Self) -> Self;
 }
 
-/// Magma mit neutralem Element.
+/// Magma mit einem neutralen Element für alle Paare.
 pub trait UnitalMagma<Op>: Magma<Op> + UnitalPartialMagma<Op> {
     /// Das neutrale Element (`0` bzw. `1`).
+    #[must_use]
     fn identity() -> Self;
 }
 
@@ -171,6 +235,7 @@ pub trait Monoid<Op>: Semigroup<Op> + UnitalMagma<Op> + SmallCategory<Op> {}
 /// Monoid, in dem jedes Element ein Inverses hat. Zugleich ein assoziativer Loop.
 pub trait Group<Op>: Monoid<Op> + Loop<Op> + AssociativeQuasigroup<Op> + Groupoid<Op> {
     /// Das Inverse von `self` (`-a` bzw. `a⁻¹`).
+    #[must_use]
     fn inverse(&self) -> Self;
 }
 
@@ -179,8 +244,9 @@ pub trait Group<Op>: Monoid<Op> + Loop<Op> + AssociativeQuasigroup<Op> + Groupoi
 /// Magma, dessen Verknüpfung kommutativ ist: `a ∘ b = b ∘ a`.
 pub trait Commutative<Op>: Magma<Op> + Flexible<Op> {}
 
-/// Magma, in dem jedes Element mit sich selbst verknüpft sich selbst ergibt: `a ∘ a = a`.
-pub trait Idempotent<Op>: Magma<Op> {}
+/// Magma, in dem jedes Element mit sich selbst verknüpft sich selbst ergibt: `a ∘ a = a`. Dann
+/// erzeugt jedes Element nur sich selbst, also ist das Magma potenz-assoziativ.
+pub trait Idempotent<Op>: Magma<Op> + PowerAssociative<Op> {}
 
 /// Halbgruppe mit kommutativer Verknüpfung. Solche Halbgruppen sind stets medial.
 pub trait CommutativeSemigroup<Op>: Semigroup<Op> + Commutative<Op> + Medial<Op> {}
@@ -222,9 +288,11 @@ pub trait PowerAssociative<Op>: Magma<Op> {}
 // --- Mediale Familie ---
 
 /// Trimedial: Je drei (nicht notwendig verschiedene) Elemente erzeugen ein mediales Untermagma.
-pub trait Trimedial<Op>: Magma<Op> {}
+/// Insbesondere semimedial.
+pub trait Trimedial<Op>: Semimedial<Op> {}
 
-/// Medial: `(x∘y)∘(u∘z) = (x∘u)∘(y∘z)`. Jedes Untermagma ist dann ebenfalls medial.
+/// Medial: `(x∘y)∘(u∘z) = (x∘u)∘(y∘z)`. Jedes Untermagma ist dann ebenfalls medial, und das
+/// Magma ist trimedial (und damit semimedial).
 pub trait Medial<Op>: Trimedial<Op> {}
 
 /// Entropisch: homomorphes Bild eines medialen, kürzbaren Magmas. Insbesondere medial.
@@ -256,7 +324,7 @@ pub trait SelfDistributive<Op>: LeftSelfDistributive<Op> + RightSelfDistributive
 pub trait Unipotent<Op>: Magma<Op> {}
 
 /// Nullpotent: `(x∘x)∘y = x∘x = y∘(x∘x)`. Quadrate absorbieren.
-pub trait Zeropotent<Op>: Magma<Op> {}
+pub trait Zeropotent<Op>: Unipotent<Op> {}
 
 // --- Konstante Verknüpfungen ---
 
@@ -267,13 +335,13 @@ pub trait LeftUnar<Op>: Magma<Op> {}
 pub trait RightUnar<Op>: Magma<Op> {}
 
 /// Nullhalbgruppe: `x∘y = u∘v`. Alle Produkte sind gleich.
-pub trait NullSemigroup<Op>: Semigroup<Op> + LeftUnar<Op> + RightUnar<Op> {}
+pub trait NullSemigroup<Op>: Semigroup<Op> + LeftUnar<Op> + RightUnar<Op> + Zeropotent<Op> {}
 
-/// Halbgruppe mit Linksnullen: `x∘y = x`.
-pub trait LeftZeroSemigroup<Op>: Semigroup<Op> {}
+/// Halbgruppe mit Linksnullen: `x∘y = x`. Das ist ein Band, links-unar und rechtskürzbar.
+pub trait LeftZeroSemigroup<Op>: Band<Op> + LeftUnar<Op> + RightCancellative<Op> {}
 
-/// Halbgruppe mit Rechtsnullen: `y∘x = x`.
-pub trait RightZeroSemigroup<Op>: Semigroup<Op> {}
+/// Halbgruppe mit Rechtsnullen: `y∘x = x`. Das ist ein Band, rechts-unar und linkskürzbar.
+pub trait RightZeroSemigroup<Op>: Band<Op> + RightUnar<Op> + LeftCancellative<Op> {}
 
 // --- Sonstiges ---
 
@@ -337,6 +405,7 @@ pub trait CommutativeRing<Add = Additive, Mul = Multiplicative>:
 /// Schiefkörper: Ring, in dem jedes Element außer dem Nullelement bezüglich `Mul` ein Inverses hat (z. B. die Quaternionen).
 pub trait DivisionRing<Add = Additive, Mul = Multiplicative>: Ring<Add, Mul> {
     /// Der Kehrwert bezüglich `Mul`: `Some(x⁻¹)`, und `None` genau für das Nullelement.
+    #[must_use]
     fn recip(&self) -> Option<Self>;
 
     /// Division von rechts: `self ⋅ rhs⁻¹`. `None`, wenn `rhs` das Nullelement ist.
@@ -370,7 +439,8 @@ pub trait LeftAction<S, Act = ScalarMultiplication>: Sized {
 /// Modul über dem Ring `R`: `Self` ist eine abelsche Gruppe, `R` wirkt von links, und es gilt
 /// `a(x + y) = ax + ay`, `(a + b)x = ax + bx`, `(ab)x = a(bx)` und `1x = x`.
 ///
-/// `Add` und `Mul` benennen die Verknüpfungen von `Self` bzw. `R` (je Typ ein eigenes Etikett-Paar).
+/// `Add` benennt die Addition von `Self` *und* von `R`, `Mul` die Multiplikation von `R`. Beide
+/// Typen teilen sich also das Etikett der Addition (siehe die offenen Punkte in `TODO.md`).
 pub trait Module<R, Add = Additive, Mul = Multiplicative, Act = ScalarMultiplication>:
     AbelianGroup<Add> + LeftAction<R, Act>
 where
@@ -490,7 +560,11 @@ pub trait DivisionAlgebra<
 >: UnitalAlgebra<R, Add, Mul, Act, Prod> where
     R: CommutativeRing<Add, Mul>,
 {
-    /// Der Kehrwert bezüglich `Prod`: `Some(x⁻¹)`, und `None` genau für den Nullvektor.
+    /// Der Kehrwert bezüglich `Prod`: `Some(x⁻¹)` mit `x ∘ x⁻¹ = x⁻¹ ∘ x = 1`, und `None` genau
+    /// für den Nullvektor. Ein zweiseitiges Inverses gibt es in den alternativen Divisionsalgebren
+    /// (ℝ, ℂ, ℍ, 𝕆); in einer beliebigen nicht assoziativen Divisionsalgebra ist nur die Teilbarkeit
+    /// (`ldiv`/`rdiv` von [`Quasigroup`]) garantiert.
+    #[must_use]
     fn recip(&self) -> Option<Self>;
 }
 
@@ -499,6 +573,7 @@ pub trait DivisionAlgebra<
 /// Auf `Self` gibt es eine Involution `x ↦ x*`, benannt durch `Inv`: `(x*)* = x`.
 pub trait Involutive<Inv = Conjugation>: Sized {
     /// Wendet die Involution an: `x ↦ x*`.
+    #[must_use]
     fn conjugate(&self) -> Self;
 }
 
@@ -536,7 +611,10 @@ pub trait AlgebraWithInvolution<
 /// nicht ausgearteter quadratischer Norm-Form `Nm(x) = x ∘ x*`, die multiplikativ ist:
 /// `Nm(x ∘ y) = Nm(x) ⋅ Nm(y)`.
 ///
-/// Nach dem Satz von Hurwitz sind das (über ℝ) genau ℝ, ℂ, ℍ und 𝕆. Die Sedenionen sind keine.
+/// Nach dem Satz von Hurwitz haben Kompositionsalgebren die Dimension 1, 2, 4 oder 8. Über ℝ sind
+/// die Divisionsalgebren darunter genau ℝ, ℂ, ℍ und 𝕆; dazu kommen die *gespaltenen* Formen mit
+/// Nullteilern (z. B. die 2×2-Matrizen als gespaltene Quaternionen). Die Sedenionen sind keine
+/// Kompositionsalgebra.
 pub trait CompositionAlgebra<
     K,
     Add = Additive,
@@ -560,8 +638,13 @@ pub trait Anticommutative<Op, Add = Additive>: Magma<Op> + Group<Add> {}
 
 /// Alternierend bezüglich `Op`: `x ∘ x = 0` (das Nullelement von `Add`).
 ///
-/// Daraus folgt aus der Bilinearität die Antikommutativität.
-pub trait Alternating<Op, Add = Additive>: Anticommutative<Op, Add> + UnitalMagma<Add> {}
+/// Zusammen mit der Distributivität von `Op` über `Add` folgt die Antikommutativität:
+/// `0 = (x + y) ∘ (x + y) = x ∘ y + y ∘ x`. Ohne Distributivität wäre das kein Satz, deshalb
+/// verlangt das Trait sie.
+pub trait Alternating<Op, Add = Additive>:
+    Anticommutative<Op, Add> + Distributive<Op, Add>
+{
+}
 
 /// Jacobi-Identität für `Op`: `x ∘ (y ∘ z) + y ∘ (z ∘ x) + z ∘ (x ∘ y) = 0`.
 ///
@@ -699,12 +782,15 @@ pub trait GradedAlgebra<
     R: CommutativeRing<Add, Mul>,
 {
     /// Der gerade Anteil `A₀`.
+    #[must_use]
     fn even_part(&self) -> Self;
 
     /// Der ungerade Anteil `A₁`.
+    #[must_use]
     fn odd_part(&self) -> Self;
 
     /// Die Gradinvolution `x̂ = gerade − ungerade`. Sie ist ein Algebra-Automorphismus.
+    #[must_use]
     fn grade_involution(&self) -> Self {
         <Self as Magma<Add>>::op(
             &self.even_part(),

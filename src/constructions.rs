@@ -1,19 +1,26 @@
-//! Konkrete Konstruktionen mit fester Dimension: freie Moduln, das Tensorprodukt `V ⊗ W` und die
-//! freie Clifford-Algebra.
+//! Konkrete Konstruktionen mit fester Dimension: freie Moduln [`Vector`], das Tensorprodukt
+//! [`Tensor`] `V ⊗ W` und die freie Clifford-Algebra [`Clifford`] samt Diagonalform
+//! [`DiagonalForm`].
 //!
-//! Alle drei sind Koeffizienten-Felder über einem Ring `R` mit Const-Generics. Sie brauchen keine
-//! Allokation und keinen Basisdatentyp: `R` kann alles sein, was die Ring-Traits erfüllt.
+//! Diese drei sind Koeffizienten-Felder über einem Ring `R` mit Const-Generics. Darauf bauen drei
+//! Typen auf, die ein Clifford-Element mit einer Invariante umhüllen: die gerade Unteralgebra
+//! [`EvenSubalgebra`], die Rotorgruppe [`Rotor`] (Spin-Gruppe) und die Lie-Algebra so(N) der
+//! [`Bivector`]en samt ihrer Vektor- und Spindarstellung.
+//!
+//! Alles braucht keine Allokation und keinen Basisdatentyp: `R` kann alles sein, was die
+//! Ring-Traits erfüllt.
 
 use core::array::from_fn;
 use core::fmt;
 use core::marker::PhantomData;
 
 use crate::{
-    Additive, AntiAutomorphism, Automorphism, Bracket, CliffordAlgebra, CommutativeRing, Field,
-    GradeInvolution, GradedAlgebra, Group, Involutive, LeftAction, LieModule, Magma, Module,
-    Multiplicative, QuadraticForm, Reversion, Ring, TensorProduct, UnitalAlgebra, UnitalMagma,
-    impl_abelian_group, impl_algebra, impl_algebra_with_involution, impl_associative_algebra,
-    impl_group, impl_lie_algebra, impl_magma, impl_module, impl_monoid, impl_unital_algebra,
+    Additive, AntiAutomorphism, AssociativeAlgebra, Automorphism, Bracket, CliffordAlgebra,
+    CommutativeRing, Field, GradeInvolution, GradedAlgebra, Group, Involutive, LeftAction,
+    LieModule, Magma, Module, Multiplicative, QuadraticForm, Reversion, Ring, TensorProduct,
+    UnitalAlgebra, UnitalMagma, impl_abelian_group, impl_algebra, impl_algebra_with_involution,
+    impl_associative_algebra, impl_group, impl_lie_algebra, impl_magma, impl_module, impl_monoid,
+    impl_unital_algebra,
 };
 
 // --- Hilfsfunktionen in `R` ------------------------------------------------------------------
@@ -62,7 +69,13 @@ impl<R, const N: usize> Vector<R, N> {
 
 impl<R: Ring, const N: usize> Vector<R, N> {
     /// Der `i`-te Basisvektor `eᵢ`: Koordinate `i` ist eins, alle anderen null.
+    ///
+    /// # Panics
+    ///
+    /// Wenn `i >= N` ist: Dann gibt es keinen solchen Basisvektor.
+    #[must_use]
     pub fn basis(i: usize) -> Self {
+        assert!(i < N, "Basisindex {i} außerhalb von 0..{N}");
         Vector(from_fn(|j| if j == i { one() } else { zero() }))
     }
 }
@@ -190,6 +203,11 @@ pub trait DiagonalForm<R> {
 ///
 /// `D` muss eine Potenz von zwei sein, sonst gibt es beim ersten Gebrauch einen
 /// Compile-Fehler.
+///
+/// In Charakteristik zwei ist `−1 = 1`: Die Regel `eᵢ ⋅ eⱼ = − eⱼ ⋅ eᵢ` macht die Algebra dann
+/// kommutativ, und es ist keine Clifford-Algebra einer nicht ausgearteten Form mehr. Die
+/// Konstruktion ist dort formal erlaubt, ihre geometrischen Aussagen (Drehungen, [`Bivector`] als
+/// so(N)) gelten aber nur, wenn `2` in `R` invertierbar ist.
 pub struct Clifford<R, const D: usize, Q> {
     c: [R; D],
     _form: PhantomData<fn() -> Q>,
@@ -240,16 +258,33 @@ impl<R, const D: usize, Q> Clifford<R, D, Q> {
 
 impl<R: Ring, const D: usize, Q> Clifford<R, D, Q> {
     /// Das Basiselement `e_S` zur Bitmaske `mask`.
+    ///
+    /// # Panics
+    ///
+    /// Wenn `mask >= D` ist: Dann gibt es kein solches Basiselement.
+    #[must_use]
     pub fn blade(mask: usize) -> Self {
+        assert!(mask < D, "Bitmaske {mask} außerhalb von 0..{D}");
         Self::new(from_fn(|s| if s == mask { one() } else { zero() }))
     }
 
     /// Der `i`-te Erzeuger `eᵢ`.
+    ///
+    /// # Panics
+    ///
+    /// Wenn `i >= N` ist, mit `D = 2^N`: Dann gibt es keinen solchen Erzeuger.
+    #[must_use]
     pub fn generator(i: usize) -> Self {
+        assert!(
+            i < Self::GENERATORS,
+            "Erzeugerindex {i} außerhalb von 0..{}",
+            Self::GENERATORS
+        );
         Self::blade(1 << i)
     }
 
     /// Das Skalar `r`, als `r ⋅ e_∅`.
+    #[must_use]
     pub fn scalar(r: R) -> Self {
         let mut r = Some(r);
         Self::new(from_fn(|s| {
@@ -333,13 +368,20 @@ impl_associative_algebra!(
     for [R: CommutativeRing, const D: usize, Q: DiagonalForm<R>] Clifford<R, D, Q>, R, Multiplicative
 );
 
+// Eine assoziative unitale Algebra ist ein Ring: Addition, Multiplikation und Distributivität
+// sind schon da, es fehlen nur die Marker der Ring-Reihe.
+crate::__markers!([R: CommutativeRing, const D: usize, Q: DiagonalForm<R>] Clifford<R, D, Q>,
+    Multiplicative: Annihilating);
+crate::__markers!([R: CommutativeRing, const D: usize, Q: DiagonalForm<R>] Clifford<R, D, Q>,
+    Additive: Semiring, Rng, Ring);
+
 impl<R, const D: usize, Q> Clifford<R, D, Q>
 where
     R: CommutativeRing,
     Q: DiagonalForm<R>,
 {
-    /// Die universelle Eigenschaft: Zu Bildern `gens[i]` der Erzeuger in einer unitalen Algebra
-    /// `A` (mit `gens[i]² = qᵢ` und `gens[i] ⋅ gens[j] = −gens[j] ⋅ gens[i]`) gibt es genau einen
+    /// Die universelle Eigenschaft: Zu Bildern `gens[i]` der Erzeuger in einer assoziativen
+    /// unitalen Algebra `A` (mit `gens[i]² = qᵢ` und `gens[i] ⋅ gens[j] = −gens[j] ⋅ gens[i]`) gibt es genau einen
     /// Algebra-Homomorphismus `Cl → A`. Diese Funktion berechnet ihn: Sie ersetzt jedes
     /// `e_S` durch das entsprechende Produkt der Bilder.
     ///
@@ -347,7 +389,7 @@ where
     /// nicht.
     pub fn lift<A, const N: usize>(&self, gens: &[A; N]) -> A
     where
-        A: UnitalAlgebra<R>,
+        A: UnitalAlgebra<R> + AssociativeAlgebra<R>,
     {
         const { assert!(D == 1 << N, "D muss 2^N sein") };
         let mut acc = <A as UnitalMagma<Additive>>::identity();
@@ -424,6 +466,7 @@ where
     /// Der Anteil vom Grad `k`: nur die Basiselemente `e_S` mit `|S| = k` bleiben stehen.
     ///
     /// Grad 0 sind die Skalare, Grad 1 die Vektoren, Grad 2 die *Bivektoren* und so fort.
+    #[must_use]
     pub fn grade_part(&self, k: usize) -> Self {
         Self::new(from_fn(|s| {
             if s.count_ones() as usize == k {
@@ -447,18 +490,21 @@ where
 
     /// Die Umkehrung `x̃`: kehrt die Reihenfolge der Faktoren um, `(x ⋅ y)~ = ỹ ⋅ x̃`. Auf dem
     /// Grad-`k`-Anteil ist sie das Vorzeichen `(−1)^{k(k−1)/2}`.
+    #[must_use]
     pub fn reverse(&self) -> Self {
         self.signed_by_grade(|k| (k * k.wrapping_sub(1) / 2) % 2 == 1)
     }
 
-    /// Die Clifford-Konjugation `x̄ = ̂x̃` (Gradinvolution nach Umkehrung): Auf dem Grad-`k`-Anteil
+    /// Die Clifford-Konjugation `x̄ = (x̂)~` (Gradinvolution nach Umkehrung): Auf dem Grad-`k`-Anteil
     /// das Vorzeichen `(−1)^{k(k+1)/2}`. Sie verallgemeinert die komplexe und die
     /// Quaternionen-Konjugation.
+    #[must_use]
     pub fn clifford_conjugate(&self) -> Self {
         self.signed_by_grade(|k| (k * (k + 1) / 2) % 2 == 1)
     }
 
     /// Das „Sandwich“ `s ⋅ v ⋅ s̃`. Für einen [`Rotor`] `s` ist das die Drehung von `v`.
+    #[must_use]
     pub fn sandwich(&self, v: &Self) -> Self {
         clifford_product(&clifford_product(self, v), &self.reverse())
     }
@@ -652,18 +698,34 @@ impl_associative_algebra!(
     R, Multiplicative
 );
 
+crate::__markers!([R: CommutativeRing, const D: usize, Q: DiagonalForm<R>] EvenSubalgebra<R, D, Q>,
+    Multiplicative: Annihilating);
+crate::__markers!([R: CommutativeRing, const D: usize, Q: DiagonalForm<R>] EvenSubalgebra<R, D, Q>,
+    Additive: Semiring, Rng, Ring);
+
 // =================================================================================================
 // Die Rotorgruppe (Spin-Gruppe)
 // =================================================================================================
 
-/// Ein *Rotor*: ein gerades Element `s` mit `s ⋅ s̃ = 1`. Die Rotoren bilden eine Gruppe, die
+/// Ein *Rotor*: ein gerades Element `s` mit `s ⋅ s̃ = 1`, das Vektoren auf Vektoren abbildet
+/// (`s ⋅ v ⋅ s̃` hat für jeden Vektor `v` wieder den Grad 1). Die Rotoren bilden eine Gruppe, die
 /// **Spin-Gruppe**; das Inverse von `s` ist die Umkehrung `s̃`.
+///
+/// Die Bedingung an die Vektoren gehört zur Definition: Ab `N = 6` folgt sie nicht mehr aus
+/// `s ⋅ s̃ = 1` (dort ist die Menge `{s gerade, s ⋅ s̃ = 1}` größer, sie enthält Anteile des
+/// Pseudoskalars). [`Rotor::new`] prüft sie.
 ///
 /// Ein Rotor wirkt durch `v ↦ s ⋅ v ⋅ s̃` auf die Vektoren (Elemente vom Grad 1): Das ist eine
 /// lineare Abbildung, die die quadratische Form erhält, also eine Drehung. `s` und `−s` ergeben
-/// dieselbe Drehung: Die Spin-Gruppe ist eine *zweifache Überlagerung* der Drehgruppe. Im
-/// euklidischen `N = 3` sind die Rotoren die Einheitsquaternionen (`SU(2)`), die Drehungen mit
-/// Spin ½ in der Quantenmechanik.
+/// dieselbe Drehung. Über `ℝ` und `ℂ` ist die Spin-Gruppe deshalb eine *zweifache Überlagerung*
+/// der Drehgruppe; im euklidischen `N = 3` sind die Rotoren die Einheitsquaternionen (`SU(2)`), die
+/// Drehungen mit Spin ½ in der Quantenmechanik.
+///
+/// Über anderen Körpern gilt das nur eingeschränkt: Das Bild der Wirkung ist der Kern der
+/// Spinornorm, über endlichen Körpern ungerader Charakteristik also nur ein Teil vom Index zwei
+/// der Drehgruppe (über `ℤ/5` mit `N = 3`: 120 Rotoren, 60 Drehungen, während die Drehgruppe 120
+/// Elemente hat). In Charakteristik zwei ist `−s = s`, die Algebra kommutativ und jeder Rotor
+/// wirkt trivial.
 pub struct Rotor<R, const D: usize, Q>(Clifford<R, D, Q>);
 
 impl<R, const D: usize, Q> Rotor<R, D, Q>
@@ -671,10 +733,19 @@ where
     R: CommutativeRing + PartialEq,
     Q: DiagonalForm<R>,
 {
-    /// `Some`, wenn `s` gerade ist und `s ⋅ s̃ = 1` gilt, sonst `None`.
+    /// `Some`, wenn `s` gerade ist, `s ⋅ s̃ = 1` gilt und sowohl `s` als auch `s̃` jeden Erzeuger
+    /// auf einen Vektor abbilden (`s ⋅ eᵢ ⋅ s̃` hat den Grad 1), sonst `None`. Die Prüfung kostet
+    /// `O(N ⋅ D²)`. Dass auch `s̃` die Vektoren erhält, sichert, dass das Inverse wieder ein Rotor
+    /// ist.
     pub fn new(s: Clifford<R, D, Q>) -> Option<Self> {
         let unit = s.is_even() && clifford_product(&s, &s.reverse()) == Clifford::scalar(one());
-        unit.then_some(Rotor(s))
+        let keeps_vectors = |t: &Clifford<R, D, Q>| {
+            (0..Clifford::<R, D, Q>::GENERATORS).all(|i| {
+                let w = t.sandwich(&Clifford::generator(i));
+                w.grade_part(1) == w
+            })
+        };
+        (unit && keeps_vectors(&s) && keeps_vectors(&s.reverse())).then_some(Rotor(s))
     }
 }
 
@@ -689,6 +760,7 @@ where
     }
 
     /// Die Drehung `v ↦ s ⋅ v ⋅ s̃` des Vektors `v`.
+    #[must_use]
     pub fn rotate(&self, v: &Clifford<R, D, Q>) -> Clifford<R, D, Q> {
         self.0.sandwich(v)
     }
@@ -727,8 +799,13 @@ impl_group!(
 /// besteht (`eᵢ ⋅ eⱼ`, `i ≠ j`). Es gibt `N(N−1)/2` davon, genau die Dimension von `so(N)`.
 ///
 /// Die Bivektoren sind unter dem Kommutator `[x, y] = x y − y x` abgeschlossen und bilden damit
-/// eine **Lie-Algebra**, die Lie-Algebra `so(V, Q)` der Drehgruppe (der Tangentialraum der
-/// [`Rotor`]-Gruppe an der Eins). Sie wirkt auf zwei Weisen:
+/// eine **Lie-Algebra**. Ist `2` in `R` invertierbar und die Form nicht ausgeartet, ist das die
+/// Lie-Algebra `so(V, Q)` der Drehgruppe (der Tangentialraum der [`Rotor`]-Gruppe an der Eins).
+///
+/// In den Klammern steckt der Faktor `2 qⱼ`: `[eᵢeⱼ, eⱼeₖ] = 2 qⱼ eᵢeₖ` und `[eᵢeⱼ, eⱼ] = 2 qⱼ eᵢ`.
+/// Gilt `2 = 0` in `R` (Charakteristik zwei), verschwinden die Klammer und die Vektordarstellung
+/// ganz. Haben zwei Erzeuger `qᵢ = qⱼ = 0` (ausgeartete Form), ist die Vektordarstellung nicht
+/// treu. Das Crate prüft diese Voraussetzungen nicht. Die Bivektoren wirken auf zwei Weisen:
 ///
 /// - auf den **Vektoren** durch `v ↦ [B, v]` (infinitesimale Drehung), siehe das [`LieModule`]
 ///   auf [`Vector`],
@@ -749,7 +826,12 @@ where
         Bivector(x.grade_part(2))
     }
 
-    /// Das Basiselement `eᵢ ⋅ eⱼ` für `i ≠ j`.
+    /// Das Basiselement `eᵢ ⋅ eⱼ` für `i ≠ j`. Bei `i > j` ist es `−eⱼ ⋅ eᵢ`.
+    ///
+    /// # Panics
+    ///
+    /// Wenn `i == j` ist oder einer der Indizes nicht kleiner als die Zahl `N` der Erzeuger ist.
+    #[must_use]
     pub fn basis(i: usize, j: usize) -> Self {
         assert!(i != j, "ein Bivektor braucht zwei verschiedene Erzeuger");
         Bivector(clifford_product(
@@ -832,8 +914,9 @@ impl_lie_algebra!(
 );
 
 /// Die **Vektordarstellung** von `so(N)`: Ein Bivektor wirkt auf einen Vektor `v` durch den
-/// Kommutator `[B, v]`, eine infinitesimale Drehung. Das Ergebnis ist wieder ein Vektor, und die
-/// Abbildung ist schiefsymmetrisch bezüglich der quadratischen Form.
+/// Kommutator `[B, v]`, eine infinitesimale Drehung (bei invertierbarer `2`, siehe [`Bivector`]).
+/// Das Ergebnis ist wieder ein Vektor, und die Abbildung ist schiefsymmetrisch bezüglich der
+/// quadratischen Form.
 impl<R, const N: usize, const D: usize, Q> LieModule<Bivector<R, D, Q>, R> for Vector<R, N>
 where
     R: CommutativeRing,

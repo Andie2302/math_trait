@@ -1,14 +1,20 @@
 //! Makros, die alle nötigen Trait-Impls für eine Struktur auf einmal erzeugen.
 //!
-//! Jede algebraische Struktur verlangt viele Marker-Impls (eine Gruppe z. B. 15). Die Makros
-//! erzeugen sie und die Methoden aus kurzen Rümpfen. Die *Gesetze* (Assoziativität, Inverse, …)
-//! prüft kein Makro: Wer ein Makro verwendet, behauptet, dass sie gelten.
+//! Jede algebraische Struktur verlangt viele Marker-Impls (eine Gruppe z. B. 19 Impls, davon 15
+//! Marker). Die Makros erzeugen sie und die Methoden aus kurzen Rümpfen. Die *Gesetze*
+//! (Assoziativität, Inverse, …) prüft kein Makro: Wer ein Makro verwendet, behauptet, dass sie
+//! gelten.
 //!
 //! # Reihen
 //!
 //! Für einen Typ und ein Etikett nimmt man genau **ein** Makro der Reihe `magma` → `semigroup` →
 //! `monoid` → `group`, in der kommutativen Variante `commutative_…` bzw. `abelian_group`. Daneben
-//! gibt es `unital_magma` (Magma mit Eins, ohne Assoziativität).
+//! gibt es `unital_magma` (Magma mit Eins, ohne Assoziativität), `quasigroup` und `loop` für die
+//! Teilbarkeit, `band` und `semilattice` für idempotente Halbgruppen.
+//!
+//! Strukturen mit zwei Verknüpfungen haben ihre eigene Reihe: `semiring` → `ring` →
+//! `commutative_ring` → `division_ring` → `field` (dazu `rng` und `star_ring`). Diese Makros
+//! brauchen *beide* Etiketten (`Add`, `Mul`) und erzeugen beide Verknüpfungen auf einmal.
 //!
 //! Bei Algebren gilt ein anderes Muster: `impl_algebra!` ist die Basis, danach kommen
 //! Zusatz-Makros, die jeweils nur *ein* Marker-Trait hinzufügen (`impl_unital_algebra!`,
@@ -92,7 +98,8 @@ macro_rules! __semigroup_markers {
 #[macro_export]
 macro_rules! __commutative_markers {
     ($g:tt $t:ty, $op:ty) => {
-        $crate::__markers!($g $t, $op: Commutative, Trimedial, Medial, CommutativeSemigroup);
+        $crate::__markers!($g $t, $op: Commutative, LeftSemimedial, RightSemimedial, Semimedial,
+            Trimedial, Medial, CommutativeSemigroup);
     };
 }
 #[doc(hidden)]
@@ -445,7 +452,7 @@ macro_rules! __ring_markers {
 macro_rules! __impl_recip {
     ([$($g:tt)*] $t:ty, $add:ty, $mul:ty, $r:ident, $body:block) => {
         impl<$($g)*> $crate::DivisionRing<$add, $mul> for $t {
-            fn recip(&self) -> Option<Self> {
+            fn recip(&self) -> ::core::option::Option<Self> {
                 let $r = self;
                 $body
             }
@@ -454,16 +461,20 @@ macro_rules! __impl_recip {
 }
 
 /// Halbring: kommutatives Monoid `add`, Monoid `mul`, Distributivgesetz, `zero` absorbiert.
+/// Die Multiplikation muss nicht kommutativ sein; für den kommutativen Fall gibt es
+/// `impl_commutative_semiring!`.
 ///
 /// ```
-/// use math_trait::{impl_commutative_semiring, Additive, Multiplicative};
+/// use math_trait::{impl_semiring, Additive, Multiplicative, Semiring};
 /// struct Bool(bool);
-/// impl_commutative_semiring!(Bool, Additive, Multiplicative;
+/// impl_semiring!(Bool, Additive, Multiplicative;
 ///     add(a, b) { Bool(a.0 || b.0) }
 ///     zero() { Bool(false) }
 ///     mul(a, b) { Bool(a.0 && b.0) }
 ///     one() { Bool(true) }
 /// );
+/// fn takes<S: Semiring>() {}
+/// takes::<Bool>();
 /// ```
 #[macro_export]
 macro_rules! impl_semiring {
@@ -483,6 +494,19 @@ macro_rules! impl_semiring {
 }
 
 /// Kommutativer Halbring: `mul` ist kommutativ.
+///
+/// ```
+/// use math_trait::{impl_commutative_semiring, Additive, CommutativeSemiring, Multiplicative};
+/// struct Bool(bool);
+/// impl_commutative_semiring!(Bool, Additive, Multiplicative;
+///     add(a, b) { Bool(a.0 || b.0) }
+///     zero() { Bool(false) }
+///     mul(a, b) { Bool(a.0 && b.0) }
+///     one() { Bool(true) }
+/// );
+/// fn takes<S: CommutativeSemiring>() {}
+/// takes::<Bool>();
+/// ```
 #[macro_export]
 macro_rules! impl_commutative_semiring {
     (for [$($g:tt)*] $t:ty, $add:ty, $mul:ty;
@@ -653,6 +677,10 @@ macro_rules! impl_module {
 
 /// Algebra über `R` mit dem Produkt-Etikett `Prod`. `A` muss schon ein Modul sein und
 /// `Magma<Prod>` implementieren (z. B. über [`impl_magma!`]).
+///
+/// Ist `A` schon über [`impl_ring!`] (oder eine Variante) ein Ring und dessen Multiplikation das
+/// Produkt der Algebra, nimmt man stattdessen `impl_ring_algebra!`: Das Distributivgesetz gibt
+/// es dann schon, und `impl_algebra!` würde es doppelt erzeugen.
 #[macro_export]
 macro_rules! impl_algebra {
     (for [$($g:tt)*] $a:ty, $r:ty, $prod:ty) => {
@@ -751,7 +779,7 @@ macro_rules! impl_division_algebra {
         impl<$($g)*> $crate::DivisionAlgebra<
             $r, $crate::Additive, $crate::Multiplicative, $crate::ScalarMultiplication, $prod
         > for $a {
-            fn recip(&self) -> Option<Self> {
+            fn recip(&self) -> ::core::option::Option<Self> {
                 let $x = self;
                 $body
             }
@@ -781,25 +809,30 @@ macro_rules! impl_lie_algebra {
 /// Macht den Körper `K` zur Algebra über sich selbst: assoziativ, kommutativ, mit Einselement,
 /// trivialer Involution und der Norm `N(x) = x²`. Das ist der Anfang der Cayley-Dickson-Reihe.
 ///
-/// `K` muss schon über [`impl_field!`] ein Körper sein.
+/// `K` muss schon über [`impl_field!`] ein Körper sein. Wie alle Makros nimmt auch dieses
+/// optional Typparameter vorweg: `impl_field_algebra!(for [const P: u32] Zp<P>)`.
+///
+/// Das Makro behauptet [`CompositionAlgebra`](crate::CompositionAlgebra) für jeden Körper. In
+/// Charakteristik zwei ist die Norm `x²` aber ausgeartet (die zugehörige Bilinearform
+/// `2xy` verschwindet), dort gilt die Behauptung nicht. Das prüft das Crate nicht.
 #[macro_export]
 macro_rules! impl_field_algebra {
-    ($k:ty) => {
-        impl $crate::LeftAction<$k> for $k {
+    (for [$($g:tt)*] $k:ty) => {
+        impl<$($g)*> $crate::LeftAction<$k> for $k {
             fn act(scalar: &$k, x: &Self) -> Self {
                 <$k as $crate::Magma<$crate::Multiplicative>>::op(scalar, x)
             }
         }
-        impl $crate::Module<$k> for $k {}
-        $crate::impl_ring_algebra!($k, $k);
-        impl $crate::UnitalAlgebra<$k> for $k {}
-        impl $crate::AssociativeAlgebra<$k> for $k {}
-        impl $crate::DivisionAlgebra<$k> for $k {
-            fn recip(&self) -> Option<Self> {
+        impl<$($g)*> $crate::Module<$k> for $k {}
+        $crate::impl_ring_algebra!(for [$($g)*] $k, $k);
+        impl<$($g)*> $crate::UnitalAlgebra<$k> for $k {}
+        impl<$($g)*> $crate::AssociativeAlgebra<$k> for $k {}
+        impl<$($g)*> $crate::DivisionAlgebra<$k> for $k {
+            fn recip(&self) -> ::core::option::Option<Self> {
                 <$k as $crate::DivisionRing>::recip(self)
             }
         }
-        impl $crate::Involutive for $k {
+        impl<$($g)*> $crate::Involutive for $k {
             fn conjugate(&self) -> Self {
                 <$k as $crate::Magma<$crate::Additive>>::op(
                     self,
@@ -807,16 +840,19 @@ macro_rules! impl_field_algebra {
                 )
             }
         }
-        impl $crate::TrivialInvolution for $k {}
-        impl $crate::Automorphism<$crate::Additive> for $k {}
-        impl $crate::AntiAutomorphism<$crate::Multiplicative> for $k {}
-        impl $crate::AlgebraWithInvolution<$k> for $k {}
-        impl $crate::QuadraticForm<$k, $crate::Norm> for $k {
+        impl<$($g)*> $crate::TrivialInvolution for $k {}
+        impl<$($g)*> $crate::Automorphism<$crate::Additive> for $k {}
+        impl<$($g)*> $crate::AntiAutomorphism<$crate::Multiplicative> for $k {}
+        impl<$($g)*> $crate::AlgebraWithInvolution<$k> for $k {}
+        impl<$($g)*> $crate::QuadraticForm<$k, $crate::Norm> for $k {
             fn value(&self) -> $k {
                 <$k as $crate::Magma<$crate::Multiplicative>>::op(self, self)
             }
         }
-        impl $crate::CompositionAlgebra<$k> for $k {}
+        impl<$($g)*> $crate::CompositionAlgebra<$k> for $k {}
+    };
+    ($k:ty) => {
+        $crate::impl_field_algebra!(for [] $k);
     };
 }
 

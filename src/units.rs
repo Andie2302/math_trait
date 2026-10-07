@@ -68,4 +68,5 @@ impl_group!(for [K: DivisionRing] Units<K>, Multiplicative;
 
 // Über einem Körper ist K× abelsch.
 crate::__markers!([K: Field] Units<K>, Multiplicative:
-    Commutative, Trimedial, Medial, CommutativeSemigroup, CommutativeMonoid, AbelianGroup);
+    Commutative, LeftSemimedial, RightSemimedial, Semimedial, Trimedial, Medial,
+    CommutativeSemigroup, CommutativeMonoid, AbelianGroup);
