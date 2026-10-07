@@ -235,7 +235,7 @@ fn vector_representation_turns_the_bracket_into_a_commutator() {
     let bs = bivectors3::<Ones>();
     for x in bs.iter().step_by(13) {
         for y in bs.iter().step_by(17) {
-            for v in vectors3().iter().step_by(5) {
+            for v in vectors3().iter().step_by(7) {
                 let lhs = act(&br(x, y), v);
                 let rhs = sub(act(x, &act(y, v)), act(y, &act(x, v)));
                 assert_eq!(lhs, rhs);

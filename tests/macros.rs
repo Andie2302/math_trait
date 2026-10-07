@@ -93,15 +93,30 @@ fn jacobi_holds_for_all_basis_triples_and_samples() {
     let br = |a: &V3, b: &V3| <V3 as Magma<Bracket>>::op(a, b);
     let ad = |a: &V3, b: &V3| <V3 as Magma<Additive>>::op(a, b);
     let zero = <V3 as UnitalMagma<Additive>>::identity();
-    let vs: Vec<V3> = (0..5u8)
-        .flat_map(|i| (0..5u8).map(move |j| V3(Z5(i), Z5(j), Z5((i * 2 + j) % 5))))
+    let jacobi =
+        |x: &V3, y: &V3, z: &V3| ad(&ad(&br(x, &br(y, z)), &br(y, &br(z, x))), &br(z, &br(x, y)));
+    // alle Tripel der Basisvektoren e0, e1, e2
+    let basis = [
+        V3(Z5(1), Z5(0), Z5(0)),
+        V3(Z5(0), Z5(1), Z5(0)),
+        V3(Z5(0), Z5(0), Z5(1)),
+    ];
+    for x in &basis {
+        for y in &basis {
+            for z in &basis {
+                assert_eq!(jacobi(x, y, z), zero);
+            }
+        }
+    }
+    // alle 125 Vektoren, die Tripel mit teilerfremden Schrittweiten durchlaufen
+    let vs: Vec<V3> = (0..125u8)
+        .map(|i| V3(Z5(i % 5), Z5((i / 5) % 5), Z5(i / 25)))
         .collect();
     for x in &vs {
         assert_eq!(br(x, x), zero);
-        for y in &vs {
-            for z in &vs {
-                let sum = ad(&ad(&br(x, &br(y, z)), &br(y, &br(z, x))), &br(z, &br(x, y)));
-                assert_eq!(sum, zero);
+        for y in vs.iter().step_by(7) {
+            for z in vs.iter().step_by(11) {
+                assert_eq!(jacobi(x, y, z), zero);
             }
         }
     }

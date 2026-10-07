@@ -39,7 +39,30 @@ implies!(cancellative: Cancellative => LeftCancellative, RightCancellative);
 implies!(entropic: Entropic => Medial, Trimedial);
 implies!(semimedial: Semimedial => LeftSemimedial, RightSemimedial);
 implies!(self_distributive: SelfDistributive => LeftSelfDistributive, RightSelfDistributive);
-implies!(null_semigroup: NullSemigroup => Semigroup, LeftUnar, RightUnar);
+implies!(null_semigroup: NullSemigroup => Semigroup, LeftUnar, RightUnar, Zeropotent, Unipotent);
+implies!(zeropotent: Zeropotent => Unipotent, Magma);
+implies!(left_zero: LeftZeroSemigroup => Band, Semigroup, Idempotent, LeftUnar, RightCancellative);
+implies!(right_zero: RightZeroSemigroup => Band, Semigroup, Idempotent, RightUnar, LeftCancellative);
+implies!(idempotent: Idempotent => Magma, PowerAssociative);
+implies!(trimedial: Trimedial => Magma, Semimedial, LeftSemimedial, RightSemimedial);
+implies!(medial: Medial => Trimedial, Semimedial);
+
+// Marker, die nur ein Magma voraussetzen
+implies!(unital_partial_magma: UnitalPartialMagma => PartialMagma);
+implies!(semigroupoid: Semigroupoid => PartialMagma);
+implies!(left_cancellative: LeftCancellative => Magma);
+implies!(right_cancellative: RightCancellative => Magma);
+implies!(alternative: Alternative => Magma);
+implies!(flexible: Flexible => Magma);
+implies!(power_associative: PowerAssociative => Magma);
+implies!(left_semimedial: LeftSemimedial => Magma);
+implies!(right_semimedial: RightSemimedial => Magma);
+implies!(left_self_distributive: LeftSelfDistributive => Magma);
+implies!(right_self_distributive: RightSelfDistributive => Magma);
+implies!(unipotent: Unipotent => Magma);
+implies!(left_unar: LeftUnar => Magma);
+implies!(right_unar: RightUnar => Magma);
+implies!(central: Central => Magma);
 
 // Halbringe, Ringe und Körper (zwei Verknüpfungen)
 fn semiring<T: Semiring<A, M>, A, M>() {
@@ -50,6 +73,22 @@ fn semiring<T: Semiring<A, M>, A, M>() {
     >() {
     }
     need::<T, A, M>();
+}
+fn left_distributive<T: LeftDistributive<M, A>, M, A>() {
+    fn need<U: Magma<M2> + Magma<A2>, M2, A2>() {}
+    need::<T, M, A>();
+}
+fn right_distributive<T: RightDistributive<M, A>, M, A>() {
+    fn need<U: Magma<M2> + Magma<A2>, M2, A2>() {}
+    need::<T, M, A>();
+}
+fn distributive<T: Distributive<M, A>, M, A>() {
+    fn need<U: LeftDistributive<M2, A2> + RightDistributive<M2, A2>, M2, A2>() {}
+    need::<T, M, A>();
+}
+fn annihilating<T: Annihilating<M, A>, M, A>() {
+    fn need<U: Magma<M2> + UnitalMagma<A2>, M2, A2>() {}
+    need::<T, M, A>();
 }
 fn commutative_semiring<T: CommutativeSemiring<A, M>, A, M>() {
     fn need<U: Semiring<A2, M2> + Commutative<M2>, A2, M2>() {}
@@ -101,6 +140,54 @@ fn composition_algebra<A: CompositionAlgebra<K>, K: Field>() {
     }
     need::<A, K>();
 }
+fn algebra<T: Algebra<R>, R: CommutativeRing>() {
+    fn need<U: Module<R2> + Distributive<Multiplicative, Additive>, R2: CommutativeRing>() {}
+    need::<T, R>();
+}
+fn unital_algebra<T: UnitalAlgebra<R>, R: CommutativeRing>() {
+    fn need<U: Algebra<R2> + UnitalMagma<Multiplicative>, R2: CommutativeRing>() {}
+    need::<T, R>();
+}
+fn associative_algebra<T: AssociativeAlgebra<R>, R: CommutativeRing>() {
+    fn need<U: Algebra<R2> + Semigroup<Multiplicative>, R2: CommutativeRing>() {}
+    need::<T, R>();
+}
+fn alternative_algebra<T: AlternativeAlgebra<R>, R: CommutativeRing>() {
+    fn need<U: Algebra<R2> + Alternative<Multiplicative>, R2: CommutativeRing>() {}
+    need::<T, R>();
+}
+fn algebra_with_involution<T: AlgebraWithInvolution<R>, R: CommutativeRing>() {
+    fn need<
+        U: Algebra<R2> + Automorphism<Additive> + AntiAutomorphism<Multiplicative>,
+        R2: CommutativeRing,
+    >() {
+    }
+    need::<T, R>();
+}
+fn trivial_involution<T: TrivialInvolution>() {
+    fn need<U: Involutive>() {}
+    need::<T>();
+}
+fn automorphism<T: Automorphism<Op>, Op>() {
+    fn need<U: Magma<Op2> + Involutive, Op2>() {}
+    need::<T, Op>();
+}
+fn anti_automorphism<T: AntiAutomorphism<Op>, Op>() {
+    fn need<U: Magma<Op2> + Involutive, Op2>() {}
+    need::<T, Op>();
+}
+fn bilinear_form<T: BilinearForm<K, M>, K: Field, M>() {
+    fn need<U: VectorSpace<K2>, K2: Field>() {}
+    need::<T, K>();
+}
+fn quadratic_form<T: QuadraticForm<K, Q>, K: Field, Q>() {
+    fn need<U: VectorSpace<K2>, K2: Field>() {}
+    need::<T, K>();
+}
+fn jacobi<T: Jacobi<Op, A>, Op, A>() {
+    fn need<U: Magma<Op2> + UnitalMagma<A2>, Op2, A2>() {}
+    need::<T, Op, A>();
+}
 fn star_ring<T: StarRing>() {
     fn need<U: Ring + Automorphism<Additive> + AntiAutomorphism<Multiplicative>>() {}
     need::<T>();
@@ -111,7 +198,7 @@ fn hierarchy_compiles() {}
 
 // Lie-Algebren
 fn alternating<T: Alternating<Op, A>, Op, A>() {
-    fn need<U: Anticommutative<Op2, A2> + UnitalMagma<A2>, Op2, A2>() {}
+    fn need<U: Anticommutative<Op2, A2> + Distributive<Op2, A2>, Op2, A2>() {}
     need::<T, Op, A>();
 }
 fn anticommutative<T: Anticommutative<Op, A>, Op, A>() {

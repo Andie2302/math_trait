@@ -201,7 +201,7 @@ fn even_subalgebra_of_three_generators_is_the_quaternions() {
         })
         .collect();
     assert_eq!(evens.len(), 625, "Cl⁰ hat 4 Dimensionen, also 5⁴ Elemente");
-    for x in evens.iter().step_by(5) {
+    for x in evens.iter().step_by(7) {
         for y in &evens {
             let lhs = phi(&<E as Magma<Multiplicative>>::op(x, y));
             assert_eq!(lhs, mul(&phi(x), &phi(y)));

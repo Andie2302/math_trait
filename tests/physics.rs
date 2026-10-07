@@ -81,8 +81,15 @@ fn all_vectors() -> Vec<V2> {
     (0..25).map(|i| V2(z(i), z(i / 5))).collect()
 }
 fn all_matrices() -> Vec<Mat2> {
-    (0..625)
-        .map(|i| m(i as u8, (i / 5) as u8, (i / 25) as u8, (i / 125) as u8))
+    (0..625usize)
+        .map(|i| {
+            m(
+                (i % 5) as u8,
+                ((i / 5) % 5) as u8,
+                ((i / 25) % 5) as u8,
+                ((i / 125) % 5) as u8,
+            )
+        })
         .collect()
 }
 

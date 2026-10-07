@@ -45,7 +45,7 @@ fn type_level_properties() {
     alternative::<C3, Z5>();
     commutative::<Z5>();
     commutative::<C1>();
-    involutive::<C4, Z5>(); // das 16-dimensionale hat Einselement und Involution, sonst nichts
+    involutive::<C4, Z5>(); // das 16-dimensionale hat Einselement, Involution und Norm-Form, aber keine Kompositionseigenschaft
 }
 
 // --- Stichproben --------------------------------------------------------------------------
@@ -169,6 +169,40 @@ fn norm_is_multiplicative_up_to_dimension_eight() {
     assert_eq!(violations::<C1>(norm_mult), 0);
     assert_eq!(violations::<C2>(norm_mult), 0);
     assert_eq!(violations::<C3>(norm_mult), 0);
+}
+
+/// Die Norm-Form ist `N(x) = x ⋅ x*` (als Skalar mal Eins), auf jeder Stufe.
+fn norm_is_x_times_conjugate<T>(x: &T, _y: &T, _z: &T) -> bool
+where
+    T: UnitalAlgebra<Z5> + AlgebraWithInvolution<Z5> + QuadraticForm<Z5, Norm> + PartialEq,
+{
+    let n = <T as QuadraticForm<Z5, Norm>>::value(x);
+    let one = <T as UnitalMagma<Multiplicative>>::identity();
+    mul(x, &conj(x)) == <T as LeftAction<Z5>>::act(&n, &one)
+}
+
+/// `N(s ⋅ x) = s² ⋅ N(x)`.
+fn norm_is_homogeneous<T>(x: &T, _y: &T, _z: &T) -> bool
+where
+    T: UnitalAlgebra<Z5> + QuadraticForm<Z5, Norm>,
+{
+    let nx = <T as QuadraticForm<Z5, Norm>>::value(x);
+    (0..5u8).all(|s| {
+        let s = Z5(s);
+        let sx = <T as LeftAction<Z5>>::act(&s, x);
+        let s2 = <Z5 as Magma<Multiplicative>>::op(&s, &s);
+        <T as QuadraticForm<Z5, Norm>>::value(&sx) == <Z5 as Magma<Multiplicative>>::op(&s2, &nx)
+    })
+}
+
+#[test]
+fn norm_form_is_x_times_conjugate_and_homogeneous_at_every_level() {
+    assert_eq!(violations::<Z5>(norm_is_x_times_conjugate), 0);
+    assert_eq!(violations::<C1>(norm_is_x_times_conjugate), 0);
+    assert_eq!(violations::<C2>(norm_is_x_times_conjugate), 0);
+    assert_eq!(violations::<C3>(norm_is_x_times_conjugate), 0);
+    assert_eq!(violations::<C4>(norm_is_x_times_conjugate), 0);
+    assert_eq!(violations::<C3>(norm_is_homogeneous), 0);
 }
 
 #[test]

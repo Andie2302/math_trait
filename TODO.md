@@ -28,4 +28,5 @@ Offene Themen und Ideen, grob nach Priorität.
 ## Später
 
 - **Basisdatentypen und externe Crates** (`i32`, `f64`, `num-complex`, …): Wegen der Orphan-Regel können die Impls nicht in einem Aufsatz-Crate stehen, solange die Etiketten (`Additive`, …) aus `math_trait` kommen. Geplant: Feature-Flags in `math_trait` selbst. Die Zahlen-Traits (`numeric::Number`, `Integer`, `Float`, `Signed`, `Unsigned`) sind dafür vorbereitet.
+- **Testfixtures zusammenführen**: `tests/common/mod.rs` enthält ℤ/5 und die Diagonalformen für neue Tests. Die älteren Testdateien (rund 13) haben noch eigene Kopien von `Z5`, `Mat2`, den Formen und den Gesetzesprüfern.
 - Prüffunktionen für die Gesetze (Assoziativität, Distributivität usw.) zum Testen von Datentypen. Mit den Methoden jetzt möglich.
