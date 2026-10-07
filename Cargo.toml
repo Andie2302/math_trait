@@ -2,7 +2,13 @@
 name = "math_trait"
 version = "0.1.0"
 edition = "2024"
+rust-version = "1.85"
 description = "Ein Trait-System für Mathematik (und mehr), unabhängig von konkreten Basisdatentypen"
 license = "MIT OR Apache-2.0"
+repository = "https://github.com/Andie2302/math_trait"
+readme = "README.md"
+keywords = ["math", "algebra", "traits", "group-theory", "clifford"]
+categories = ["mathematics", "no-std"]
+exclude = [".github/"]
 
 [dependencies]
